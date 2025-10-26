@@ -32,7 +32,6 @@ reqwest.workspace = true
 ring.workspace = true
 ed25519-dalek.workspace = true
 sha2.workspace = true
-heim.workspace = true
 seccomp = { workspace = true, optional = true }
 landlock = { workspace = true, optional = true }
 

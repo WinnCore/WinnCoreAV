@@ -2,11 +2,18 @@
 resolver = "2"
 members = [
     "av-core",
-    "av-cli", 
+    "av-signatures", 
     "av-daemon",
+    "av-cli",
     "av-quarantine",
-    "av-signatures",
 ]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["WinnCore Team"]
+license = "MIT"
+repository = "https://github.com/WinnCore/WinnCoreAV"
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -47,13 +54,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"] }
 url = "2.5"
 walkdir = "2.5"
-yara = "=0.23.0"
-
-[workspace.package]
-edition = "2021"
-version = "0.1.0"
-authors = ["WinnCore"]
-license = "MIT"
+yara = { version = "0.23.0", default-features = false, features = ["vendored", "bindgen"] }
 
 [profile.release]
 opt-level = 3

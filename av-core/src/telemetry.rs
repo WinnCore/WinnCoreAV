@@ -10,8 +10,7 @@ pub struct MetricPoint {
     pub timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TelemetryBatch {
     pub points: Vec<MetricPoint>,
 }

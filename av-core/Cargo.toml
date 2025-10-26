@@ -14,6 +14,7 @@ neon_accel = []
 ebpf_probes = []
 landlock_confine = []
 battery_saver = []
+yara_cfg_api = []
 
 [dependencies]
 anyhow.workspace = true

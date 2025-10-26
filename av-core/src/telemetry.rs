@@ -11,13 +11,14 @@ pub struct MetricPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct TelemetryBatch {
     pub points: Vec<MetricPoint>,
 }
 
 impl TelemetryBatch {
     pub fn new() -> Self {
-        Self { points: Vec::new() }
+        Self::default()
     }
 
     pub fn push(&mut self, point: MetricPoint) {

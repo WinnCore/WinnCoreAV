@@ -1,6 +1,5 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![allow(unused_variables)]
 use std::sync::Arc;
 // User-space real-time monitoring daemon.
 //

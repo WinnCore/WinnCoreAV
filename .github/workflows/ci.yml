@@ -54,7 +54,7 @@ jobs:
         run: cargo fmt --all -- --check
       
       - name: Run clippy lints
-        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
       
       - name: Build release (locked)
         run: cargo build --workspace --all-features --release --locked --verbose

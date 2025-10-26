@@ -1,0 +1,28 @@
+# Default configuration for the WinnCore antivirus daemon.
+#
+# Shipping defaults favour audit-only operation, with real-time interception
+# disabled until the user explicitly enables it. Signature sources and
+# heuristics are tuned for Ubuntu 25.10 ARM64 baseline binaries to minimize
+# false positives.
+
+[scanner]
+heuristic_threshold = 0.82
+max_scan_depth = 4
+thread_pool_size = 4
+enable_entropy_analysis = true
+
+[[scanner.signature_sources]]
+name = "default"
+url = "https://updates.charmedwoa.example/signatures/latest.json"
+pinned_spki_sha256 = "sha256/example"
+local_cache = "/var/lib/av/signatures/default.json"
+
+[realtime]
+fanotify = true
+inotify_fallback = true
+ebpf_probes = false
+landlock_confine = false
+
+[battery]
+strategy = "adaptive"
+thermal_guard = "auto"

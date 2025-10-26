@@ -1,0 +1,11 @@
+{
+  "default_action": "SCMP_ACT_KILL",
+  "arch_map": [
+    {"architecture": "SCMP_ARCH_AARCH64", "subarchitectures": []}
+  ],
+  "syscalls": [
+    {"names": ["read", "write", "close", "ppoll", "pselect6", "epoll_wait", "epoll_ctl", "eventfd", "timerfd_create", "timerfd_settime", "rt_sigaction", "rt_sigprocmask", "futex", "clock_gettime", "getrandom", "statx", "fstat", "newfstatat", "openat", "lseek", "mmap", "munmap", "mprotect", "brk", "prlimit64", "ioctl"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["socket", "connect"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 2, "op": "=="}]},
+    {"names": ["getpid", "getppid", "getuid", "geteuid", "getgid", "getegid"], "action": "SCMP_ACT_ALLOW"}
+  ]
+}

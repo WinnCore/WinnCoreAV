@@ -1,0 +1,38 @@
+# AppArmor profile for the CharmedWOA antivirus daemon.
+#
+# Principles:
+# - Default-deny outside monitored directories (home, Downloads, tmp).
+# - Allow read-only access to system binaries for false-positive baselining.
+# - Permit communication over AF_UNIX for local metrics and AF_INET for
+#   signature updates only. All other network families are denied.
+# - No write permissions except the quarantine staging directory managed by
+#   the quarantine crate (handled by helper process with tighter policy).
+# - Filesystem transitions are kept minimal to avoid privilege creep.
+
+#include <tunables/global>
+
+profile av-daemon /usr/lib/charmedwoa-av/av-daemon {
+  include <abstractions/base>
+
+  capability chown,
+  capability fowner,
+
+  network inet stream,
+  network unix stream,
+
+  /usr/lib/charmedwoa-av/** mr,
+  /usr/share/charmedwoa-av/** r,
+  /etc/charmedwoa-av/** r,
+
+  # Observability paths
+  owner @{HOME}/** r,
+  owner @{HOME}/Downloads/** r,
+  /tmp/** r,
+
+  # Configuration and state directories
+  /var/lib/av/** r,
+  /var/log/charmedwoa-av/** rw,
+
+  # Deny everything else by default
+  deny /** w,
+}

@@ -1,0 +1,33 @@
+[Unit]
+Description=CharmedWOA Antivirus Daemon (Audit Mode)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/usr/lib/charmedwoa-av/av-daemon
+User=avdaemon
+Group=avdaemon
+AmbientCapabilities=
+CapabilityBoundingSet=
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/log/charmedwoa-av
+ReadOnlyPaths=/etc/charmedwoa-av /usr/lib/charmedwoa-av
+RestrictAddressFamilies=AF_UNIX AF_INET
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+AppArmorProfile=av-daemon
+Restart=on-failure
+RestartSec=10s
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target

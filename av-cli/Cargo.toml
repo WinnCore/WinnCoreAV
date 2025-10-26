@@ -1,0 +1,20 @@
+[package]
+name = "av-cli"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+av-core = { path = "../av-core" }
+av-quarantine = { path = "../av-quarantine" }
+av-signatures = { path = "../av-signatures" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+indicatif.workspace = true
+tracing-subscriber = "0.3"

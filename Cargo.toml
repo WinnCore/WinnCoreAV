@@ -1,0 +1,47 @@
+[workspace]
+members = ["av-core", "av-cli", "av-daemon", "av-quarantine", "av-signatures"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["WinnCore"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/yourusername/winncore-av-suite"
+description = "WinnCore AV-Suite - Multi-language antivirus system"
+
+[workspace.dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+base64 = "0.21"
+bloom = "0.3"
+bytes = "1.10"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive"] }
+config = "0.14"
+dirs = "5.0"
+ed25519-dalek = "2.2"
+goblin = "0.8"
+heim = "0.1.0-beta.3"
+hex = "0.4"
+indicatif = "0.17"
+landlock = "0.3"
+notify = "6.1"
+parking_lot = "0.12"
+rand = "0.8"
+rayon = "1.11"
+reqwest = { version = "0.11", features = ["json"] }
+ring = "0.17"
+seccomp = "0.1"
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_with = "3.15"
+sha2 = "0.10"
+thiserror = "1.0"
+tokio = { version = "1.48", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2.5"
+walkdir = "2.5"
+yara = "0.23"

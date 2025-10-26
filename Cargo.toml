@@ -47,7 +47,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"] }
 url = "2.5"
 walkdir = "2.5"
-yara = "0.28"
+yara = "=0.23.0"
 
 [workspace.package]
 edition = "2021"

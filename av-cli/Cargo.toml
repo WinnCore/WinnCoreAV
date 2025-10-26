@@ -17,4 +17,4 @@ anyhow.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 indicatif.workspace = true
-tracing-subscriber = "0.3"
+tracing-subscriber.workspace = true

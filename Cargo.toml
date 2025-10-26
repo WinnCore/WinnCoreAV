@@ -45,3 +45,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
 walkdir = "2.5"
 yara = "0.23"
+
+[workspace.dependencies]
+yara = "0.28"
+yara-sys = "0.28"

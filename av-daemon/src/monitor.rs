@@ -4,7 +4,7 @@ use anyhow::Result;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 pub struct FileMonitor {
     watch_paths: Vec<PathBuf>,

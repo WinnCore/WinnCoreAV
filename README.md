@@ -9,6 +9,16 @@
 
 Designed specifically for ARM64 devices (Qualcomm Snapdragon X13s, Apple Silicon, Raspberry Pi, etc.) where traditional x86_64 antivirus solutions either don't work or run poorly through emulation.
 
+## 🎉 Latest Features
+
+- ✅ **Real-time File Monitoring** - Watches directories and auto-scans new/modified files
+- ✅ **YARA Detection Engine** - Industry-standard malware pattern matching
+- ✅ **Proven Malware Detection** - EICAR test validation in CI/CD
+- ✅ **ARM64 Native** - Optimized for aarch64 from the ground up
+
+
+Designed specifically for ARM64 devices (Qualcomm Snapdragon X13s, Apple Silicon, Raspberry Pi, etc.) where traditional x86_64 antivirus solutions either don't work or run poorly through emulation.
+
 ## ⚡ Why WinnCoreAV?
 
 - **🎯 ARM64-Native** - Built from the ground up for aarch64, not ported from x86

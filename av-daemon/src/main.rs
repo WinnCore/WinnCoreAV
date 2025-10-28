@@ -2,7 +2,6 @@ mod monitor;
 
 use anyhow::Result;
 use std::path::PathBuf;
-use tracing_subscriber;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();

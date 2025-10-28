@@ -16,7 +16,7 @@ jobs:
   build-test:
     name: Build & Test (ARM64)
     # For self-hosted ARM64 runner:
-    runs-on: [self-hosted, Linux, ARM64]
+    runs-on: ubuntu-latest
     # OR if you're using a service with ARM64 runners:
     # runs-on: ubuntu-latest
     

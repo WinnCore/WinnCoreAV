@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
 use crate::config::ScannerConfig;
 use crate::heuristics::{self};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 
 #[derive(Debug, Clone)]
 pub struct ScanContext {
@@ -39,15 +39,15 @@ pub async fn scan_path(
     let data = read_head(&ctx.target).await?;
     let signatures = evaluate_signatures(&data).await?;
     let heuristic_score = heuristics::score(&ctx.target, &data, config);
-    
+
     let entropy = if config.enable_entropy_analysis {
         entropy(&data)
     } else {
         EntropyReport::default()
     };
-    
+
     let recommended_action = heuristics::recommend(&signatures, heuristic_score, config);
-    
+
     Ok(crate::ScanOutcome {
         path: ctx.target.display().to_string(),
         signatures,
@@ -79,16 +79,15 @@ rule EICAR_Test_File
         $eicar
 }
 "#;
-    
+
     // Chain the calls - add_rules_str returns a new Compiler
-    let compiler = yara::Compiler::new()?
-        .add_rules_str(eicar_rule)?;
-    
+    let compiler = yara::Compiler::new()?.add_rules_str(eicar_rule)?;
+
     let rules = compiler.compile_rules()?;
-    
+
     // Scan the data
     let scan_results = rules.scan_mem(data, 5)?;
-    
+
     // Convert YARA matches to our format
     let mut matches = Vec::new();
     for rule in scan_results {
@@ -98,7 +97,7 @@ rule EICAR_Test_File
             metadata: serde_json::json!({}),
         });
     }
-    
+
     Ok(matches)
 }
 

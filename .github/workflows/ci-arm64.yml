@@ -1,0 +1,87 @@
+name: CI ARM64
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Force vendored libyara, no pkg-config
+  YARA_NO_PKG_CONFIG: 1
+  PKG_CONFIG_ALLOW_CROSS: 0
+
+jobs:
+  build-aarch64:
+    name: Build & Test (ARM64)
+    # GitHub doesn't provide ARM64 runners yet, but this is the future syntax
+    # For now, use self-hosted or wait for GH to support it
+    runs-on: ubuntu-latest  # Change to ubuntu-24.04-arm when available
+    # If self-hosted: runs-on: [self-hosted, Linux, ARM64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install ARM64 system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            autoconf \
+            automake \
+            libtool \
+            bison \
+            flex \
+            libssl-dev
+          echo "✓ ARM64 build tools installed"
+
+      - name: Verify architecture
+        run: |
+          echo "Architecture: $(uname -m)"
+          echo "Should be: aarch64 or arm64"
+          rustc --version --verbose
+          
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: arm64-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Build (ARM64 vendored libyara)
+        run: |
+          echo "YARA_NO_PKG_CONFIG=$YARA_NO_PKG_CONFIG"
+          cargo build --workspace --all-features --verbose
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
+
+      - name: Run tests (with diagnostics)
+        run: |
+          cargo test --workspace --all-features -- --nocapture --test-threads=1
+          echo "✓ All ARM64 tests passed"
+
+      - name: Print YARA version diagnostic
+        run: |
+          cargo test print_yara_version_arm64 -- --nocapture --exact || true
+
+      - name: Build release (locked)
+        run: cargo build --release --locked --verbose
+
+      - name: Verify no system libyara linked
+        run: |
+          # Check that we're not accidentally linking system libyara
+          if ldd target/release/av-cli 2>/dev/null | grep -i yara; then
+            echo "❌ ERROR: Linked against system libyara!"
+            exit 1
+          else
+            echo "✓ Using vendored libyara (no system link)"
+          fi

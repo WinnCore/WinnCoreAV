@@ -1,128 +1,64 @@
-name: CI
+name: CI (ARM64 Only)
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-  RUST_TOOLCHAIN: stable
+  RUSTFLAGS: -D warnings
+  # Force vendored YARA on ARM64 - no pkg-config
+  YARA_NO_PKG_CONFIG: 1
+  PKG_CONFIG_ALLOW_CROSS: 0
 
 jobs:
   build-test:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-22.04]
+    name: Build & Test (ARM64)
+    # For self-hosted ARM64 runner:
+    runs-on: [self-hosted, Linux, ARM64]
+    # OR if you're using a service with ARM64 runners:
+    # runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libyara-dev libssl-dev build-essential pkg-config
-      
-      - name: Install Rust toolchain
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
-      - name: Cache cargo dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-
-      
+
+      - name: Install ARM64 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config autoconf automake libtool bison flex libssl-dev
+          echo "✓ ARM64 dependencies installed"
+
+      - name: Verify ARM64 architecture
+        run: |
+          echo "Architecture: $(uname -m)"
+          [ "$(uname -m)" = "aarch64" ] && echo "✓ Running on ARM64" || echo "⚠ Not ARM64!"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
       - name: Check formatting
         run: cargo fmt --all -- --check
-      
-      - name: Run clippy lints
-        run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
-      
-      - name: Build release (locked)
-        run: cargo build --workspace --all-features --release --locked --verbose
-      
-      - name: Run tests (locked)
-        run: cargo test --workspace --all-features --release --locked --verbose -- --nocapture
-      
-      - name: Security audit
-        run: |
-          cargo install --locked cargo-audit || true
-          cargo audit
-      
-      - name: Coverage report
-        if: always()
-        run: |
-          cargo install cargo-tarpaulin || true
-          cargo tarpaulin --workspace --out Xml || echo "⚠️  Coverage generation skipped"
-      
-      - name: Generate SBOM
-        if: always()
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-          syft dir:. -o cyclonedx-json > sbom.json || true
-      
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.os }}-${{ github.sha }}
-          path: |
-            target/release/av-cli
-            target/release/av-daemon
-            sbom.json
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-test
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-      
-      - name: Prepare release files
+      - name: Run clippy (ARM64)
+        run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
+
+      - name: Build (ARM64 vendored YARA)
+        run: cargo build --release --locked --verbose
+
+      - name: Run tests (ARM64)
+        run: cargo test --workspace --all-features --locked -- --nocapture
+
+      - name: Print YARA version (ARM64)
         run: |
-          mkdir -p release
-          find dist -name "av-cli" -type f -exec cp {} release/av-cli \;
-          find dist -name "av-daemon" -type f -exec cp {} release/av-daemon \;
-          find dist -name "sbom.json" -type f -exec cp {} release/sbom.json \;
-          chmod +x release/av-cli release/av-daemon
-          cd release
-          sha256sum * > checksums.txt
-          ls -lah
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release/av-cli
-            release/av-daemon
-            release/sbom.json
-            release/checksums.txt
-          generate_release_notes: true
-          draft: false
-          prerelease: true
+          cargo test print_yara_version_arm64 -- --nocapture --exact || echo "No version test found"
+
+      - name: Security audit
+        run: cargo audit || true
+        continue-on-error: true

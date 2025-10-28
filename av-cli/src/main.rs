@@ -157,7 +157,7 @@ fn handle_quarantine(cmd: QuarantineCmd) -> Result<()> {
             let metadata_path = format!("/var/lib/av/quarantine/{}.json", id);
             let record: av_quarantine::QuarantineRecord =
                 serde_json::from_slice(&std::fs::read(metadata_path)?)?;
-            manager.restore(            manager.restore(&record, std::path::Path::new(&std::path::Path::new(&destination)destination))?;record, std::path::Path::new(            manager.restore(&record, std::path::Path::new(&std::path::Path::new(&destination)destination))?;destination))?;
+            manager.restore(&record, std::path::Path::new(&destination))?;
             println!("Restored {}", id);
         }
         QuarantineCmd::Delete { id } => {

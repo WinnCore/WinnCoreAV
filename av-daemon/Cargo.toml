@@ -15,26 +15,44 @@ battery_saver = []
 
 [dependencies]
 av-core = { path = "../av-core" }
-anyhow.workspace = true
+anyhow = "1"
 thiserror.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
+serde_json = "1"
+tokio = { features = ["full", "macros", "rt-multi-thread"], version = "1" }
 async-trait.workspace = true
 config.workspace = true
-dirs.workspace = true
-notify.workspace = true
+dirs = "5"
+notify = "6"
 parking_lot.workspace = true
-chrono.workspace = true
+chrono = "0.4"
 reqwest.workspace = true
 ring.workspace = true
 ed25519-dalek.workspace = true
-sha2.workspace = true
+sha2 = "0.10"
 seccomp = { workspace = true, optional = true }
 landlock = { workspace = true, optional = true }
+crossbeam-channel = "0.5"
+hex = "0.4"
+libc = "0.2"
+num_cpus = "1"
+notify-rust = "4"
+filetime = "0.2"
+globset = "0.4"
+ctrlc = "3"
+lru_time_cache = "0.11"
+glob = "0.3.3"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
 serde_json.workspace = true
+toml.workspace = true
+tempfile = "3.23.0"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

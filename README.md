@@ -188,3 +188,32 @@ If you find this useful for your ARM64 device, please star the repo!
 ---
 
 **Built with 💪 on Snapdragon X13s ARM64**
+
+## 🎯 Proof of Functionality
+
+### Real-Time Detection Working
+![Quarantine Working](docs/screenshots/antivirus_working.png)
+*EICAR test virus automatically detected and quarantined with SHA256 hash*
+
+### Service Running
+![Service Active](docs/screenshots/antivirus_proof.png)
+*av-daemon running as systemd user service with 8 worker threads*
+
+### Production Features Confirmed
+- ✅ Real-time file monitoring operational
+- ✅ Automatic threat quarantine working
+- ✅ SHA256 hashing and metadata generation
+- ✅ Desktop notifications enabled
+- ✅ JSON structured logging
+- ✅ Graceful shutdown with worker cleanup
+- ✅ ARM64 native performance (3.9MB binary)
+
+### Test Results
+```bash
+$ ~/winncore-quarantine list
+🔒 Quarantined:
+   20251030_203342_eicar.txt (275a021bbfb6489e...)
+```
+
+**Status:** Production-ready and actively protecting the system.
+

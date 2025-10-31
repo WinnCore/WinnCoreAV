@@ -1,64 +1,158 @@
-name: CI (ARM64 Only)
+name: Production CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main ]
   pull_request:
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
-  # Force vendored YARA on ARM64 - no pkg-config
-  YARA_NO_PKG_CONFIG: 1
-  PKG_CONFIG_ALLOW_CROSS: 0
+  RUST_BACKTRACE: 1
 
 jobs:
-  build-test:
-    name: Build & Test (ARM64)
-    # For self-hosted ARM64 runner:
+  lint:
+    name: Lint & Format
     runs-on: ubuntu-latest
-    # OR if you're using a service with ARM64 runners:
-    # runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-
-      - name: Install ARM64 dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config autoconf automake libtool bison flex libssl-dev
-          echo "✓ ARM64 dependencies installed"
-
-      - name: Verify ARM64 architecture
-        run: |
-          echo "Architecture: $(uname -m)"
-          [ "$(uname -m)" = "aarch64" ] && echo "✓ Running on ARM64" || echo "⚠ Not ARM64!"
-
+          components: clippy, rustfmt
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Check formatting
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: rustfmt
         run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run clippy (ARM64)
-        run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
+  test:
+    name: Test ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --locked
+      - name: Build
+        run: cross build -p av-cli --target ${{ matrix.target }} --release
+      - name: Test
+        run: cross test --all --target ${{ matrix.target }}
 
-      - name: Build (ARM64 vendored YARA)
-        run: cargo build --release --locked --verbose
-
-      - name: Run tests (ARM64)
-        run: cargo test --workspace --all-features --locked -- --nocapture
-
-      - name: Print YARA version (ARM64)
+  eicar-detection:
+    name: EICAR Integration Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-eicar-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build release
+        run: cargo build -p av-cli --release
+      - name: Create EICAR file safely
         run: |
-          cargo test print_yara_version_arm64 -- --nocapture --exact || echo "No version test found"
+          mkdir -p /tmp/av-test
+          # base64 encoded EICAR to avoid triggering repo scanners
+          echo 'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JUVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=' \
+            | base64 -d > /tmp/av-test/eicar.com
+      - name: Scan EICAR
+        run: |
+          QUARANTINE_DIR=/tmp/av-quarantine \
+          ./target/release/av-cli scan /tmp/av-test/eicar.com > scan_output.txt || true
+          cat scan_output.txt
+      - name: Verify detection
+        run: |
+          grep -E -q 'EICAR|THREAT|MALWARE|Quarantine' scan_output.txt
+      - name: Upload scan results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-results
+          path: scan_output.txt
 
-      - name: Security audit
-        run: cargo audit || true
-        continue-on-error: true
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-audit-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install cargo-audit and cargo-deny
+        run: |
+          cargo install cargo-audit --locked
+          cargo install cargo-deny --locked
+      - name: cargo audit
+        run: cargo audit
+      - name: cargo deny
+        run: cargo deny check
+
+  benchmark:
+    name: Performance Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-bench-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build release
+        run: cargo build -p av-cli --release
+      - name: Create test files
+        run: |
+          mkdir -p /tmp/bench
+          for i in $(seq 1 100); do
+            dd if=/dev/urandom of=/tmp/bench/file$i.bin bs=1M count=1 status=none
+          done
+      - name: Benchmark scan
+        run: |
+          /usr/bin/time -f 'elapsed=%E maxrss_kb=%M' ./target/release/av-cli scan /tmp/bench | tee bench_output.txt
+      - name: Publish bench artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-output
+          path: bench_output.txt

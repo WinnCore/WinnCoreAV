@@ -7,7 +7,9 @@ use std::panic;
 use tracing::{error, info};
 
 fn init_logging() {
-    tracing_subscriber::fmt().with_target(false).json().init();
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .init();
 
     panic::set_hook(Box::new(|p| {
         error!("PANIC: {:?}", p);

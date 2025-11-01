@@ -1,6 +1,8 @@
+mod metrics;
 mod monitor;
 
 use anyhow::Result;
+use metrics::*;
 use std::panic;
 use tracing::{error, info};
 
@@ -31,6 +33,16 @@ fn main() -> Result<()> {
 
     init_logging();
     info!("🛡️  WinnCoreAV v0.1.0");
+
+    // Start metrics server
+    if let Err(e) = metrics::start_metrics_server(9090) {
+        error!("Failed to start metrics server: {}", e);
+    } else {
+        info!("📊 Metrics available at http://localhost:9090/metrics");
+    }
+
+    // Initialize worker count gauge
+    WORKER_THREADS.set(num_cpus::get() as f64);
 
     let home = dirs::home_dir().expect("No HOME");
     let monitor = monitor::FileMonitor::new(

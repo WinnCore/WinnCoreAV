@@ -1,5 +1,6 @@
 //! Production monitoring with owned runtime
 
+use crate::metrics::*;
 use anyhow::Result;
 use av_core::{RecommendedAction, Scanner, ScannerConfig};
 use crossbeam_channel::{bounded, Sender};
@@ -307,9 +308,13 @@ impl FileMonitor {
 
         if let Ok(tx_guard) = self.tx.lock() {
             if let Some(ref tx) = *tx_guard {
-                if tx.try_send(real_path).is_err() {
+                if tx.try_send(real_path.clone()).is_err() {
                     self.stats.queue_drops.fetch_add(1, Ordering::Relaxed);
+                    QUEUE_DROPS.inc();
                     warn!("Queue full");
+                } else {
+                    // Update queue depth after successful send
+                    QUEUE_DEPTH.set(tx.len() as f64);
                 }
             }
         }
@@ -335,8 +340,22 @@ impl FileMonitor {
 
         info!("🔍 {}", path.display());
         ctx.stats.files_scanned.fetch_add(1, Ordering::Relaxed);
+        FILES_SCANNED.inc();
 
-        let outcome = ctx.scanner.scan_path(path).await?;
+        // Time the scan operation
+        let start = Instant::now();
+        let scan_result = ctx.scanner.scan_path(path).await;
+        let duration = start.elapsed();
+        SCAN_DURATION.observe(duration.as_secs_f64());
+
+        let outcome = match scan_result {
+            Ok(outcome) => outcome,
+            Err(e) => {
+                SCAN_ERRORS.inc();
+                ctx.stats.scan_errors.fetch_add(1, Ordering::Relaxed);
+                return Err(e);
+            }
+        };
 
         match outcome.recommended_action {
             RecommendedAction::Allow => {
@@ -354,6 +373,7 @@ impl FileMonitor {
             RecommendedAction::Quarantine => {
                 error!("🚨 {}", path.display());
                 ctx.stats.threats_detected.fetch_add(1, Ordering::Relaxed);
+                THREATS_DETECTED.inc();
 
                 if ctx.notifications_enabled {
                     let _ = Notification::new()
@@ -364,6 +384,7 @@ impl FileMonitor {
 
                 if ctx.auto_quarantine {
                     Self::quarantine_with_hash(path, &ctx.quarantine_dir, &ctx.stats).await?;
+                    QUARANTINE_OPS.inc();
                 }
             }
         }

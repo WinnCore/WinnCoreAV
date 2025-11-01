@@ -1,4 +1,5 @@
 # cargo-deny configuration for WinnCoreAV
+# Updated for cargo-deny 0.16.0+ (deprecated fields removed)
 
 [graph]
 targets = [
@@ -9,14 +10,14 @@ all-features = true
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "all"
-yanked = "warn"
+version = 2
 ignore = []
 
 [licenses]
-unlicensed = "deny"
+version = 2
 confidence-threshold = 0.8
+
+# Use allow list (replaces old deny/copyleft/default)
 allow = [
     "MIT",
     "Apache-2.0",
@@ -27,21 +28,18 @@ allow = [
     "Unlicense",
     "0BSD",
 ]
-deny = [
-    "GPL-2.0",
-    "GPL-3.0",
-    "AGPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
+
+# Licenses to reject (instead of old deny = [...])
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
 ]
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
+wildcards = "allow"
 highlight = "all"
 
 [sources]

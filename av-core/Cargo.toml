@@ -37,3 +37,4 @@ walkdir.workspace = true
 chrono.workspace = true
 semver.workspace = true
 url = "^2"
+base64.workspace = true

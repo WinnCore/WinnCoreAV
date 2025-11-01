@@ -73,7 +73,7 @@ rule EICAR_Test_File
         description = "EICAR Anti-Virus Test File"
         
     strings:
-        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        // EICAR pattern defined in eicar.yar (base64 encoded)
         
     condition:
         $eicar

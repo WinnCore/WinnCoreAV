@@ -1,5 +1,4 @@
 # cargo-deny configuration for WinnCoreAV
-# Run: cargo deny check
 
 [graph]
 targets = [
@@ -11,9 +10,8 @@ all-features = true
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 vulnerability = "deny"
-unmaintained = "warn"
+unmaintained = "deny"
 yanked = "warn"
-notice = "deny"
 ignore = []
 
 [licenses]
@@ -45,12 +43,8 @@ default = "deny"
 multiple-versions = "warn"
 wildcards = "deny"
 highlight = "all"
-deny = []
-skip = []
-skip-tree = []
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []

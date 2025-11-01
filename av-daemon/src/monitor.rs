@@ -96,7 +96,7 @@ impl FileMonitor {
 
         let config = ScannerConfig::default();
         let scanner = Arc::new(Scanner::new(config)?);
-        
+
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_time()
             .enable_io()
@@ -105,16 +105,16 @@ impl FileMonitor {
             .build()?;
 
         let excludes = Arc::new(Excludes::new(&exclude_patterns));
-        let notifications_enabled = std::env::var("DISPLAY").is_ok() || 
-                                   std::env::var("WAYLAND_DISPLAY").is_ok();
-        
+        let notifications_enabled =
+            std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok();
+
         let quarantine_dir = dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("winncore-av")
             .join("quarantine");
-        
+
         std::fs::create_dir_all(&quarantine_dir)?;
-        
+
         #[cfg(target_family = "unix")]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -126,7 +126,7 @@ impl FileMonitor {
 
         let workers = num_cpus::get().max(2);
         info!("✅ Scanner initialized ({} workers)", workers);
-        
+
         let ctx = Arc::new(WorkerContext {
             scanner,
             stats: stats.clone(),
@@ -135,12 +135,12 @@ impl FileMonitor {
             auto_quarantine,
             notifications_enabled,
         });
-        
+
         let mut worker_handles = Vec::new();
         for worker_id in 0..workers {
             let rx = rx.clone();
             let ctx = ctx.clone();
-            
+
             let handle = runtime.spawn(async move {
                 while let Ok(path) = rx.recv() {
                     if let Err(e) = Self::scan_worker(&path, &ctx).await {
@@ -152,8 +152,22 @@ impl FileMonitor {
             worker_handles.push(handle);
         }
 
-        info!("🔔 Notifications: {}", if notifications_enabled { "ENABLED" } else { "DISABLED" });
-        info!("🔒 Auto-quarantine: {}", if auto_quarantine { "ENABLED" } else { "DISABLED" });
+        info!(
+            "🔔 Notifications: {}",
+            if notifications_enabled {
+                "ENABLED"
+            } else {
+                "DISABLED"
+            }
+        );
+        info!(
+            "🔒 Auto-quarantine: {}",
+            if auto_quarantine {
+                "ENABLED"
+            } else {
+                "DISABLED"
+            }
+        );
 
         Ok(Self {
             watch_paths: paths,
@@ -161,7 +175,9 @@ impl FileMonitor {
             tx: Arc::new(Mutex::new(Some(tx))),
             stats,
             stop: Arc::new(AtomicBool::new(false)),
-            debounce: Arc::new(Mutex::new(LruCache::with_expiry_duration(Duration::from_millis(750)))),
+            debounce: Arc::new(Mutex::new(LruCache::with_expiry_duration(
+                Duration::from_millis(750),
+            ))),
             runtime,
             worker_handles: Arc::new(Mutex::new(Some(worker_handles))),
         })
@@ -174,7 +190,8 @@ impl FileMonitor {
         ctrlc::set_handler(move || {
             info!("Shutdown signal received");
             stop.store(true, Ordering::SeqCst);
-        }).ok();
+        })
+        .ok();
 
         let (event_tx, event_rx) = std::sync::mpsc::channel();
         let mut watcher = RecommendedWatcher::new(
@@ -194,7 +211,7 @@ impl FileMonitor {
         }
 
         let mut event_count = 0;
-        
+
         while !self.stop.load(Ordering::SeqCst) {
             match event_rx.recv_timeout(Duration::from_millis(500)) {
                 Ok(event) => {
@@ -215,13 +232,13 @@ impl FileMonitor {
         }
 
         info!("🛑 Shutting down workers...");
-        
+
         if let Ok(mut tx_guard) = self.tx.lock() {
             if let Some(tx) = tx_guard.take() {
                 drop(tx);
             }
         }
-        
+
         if let Ok(mut handles_guard) = self.worker_handles.lock() {
             if let Some(handles) = handles_guard.take() {
                 for handle in handles {
@@ -229,14 +246,14 @@ impl FileMonitor {
                 }
             }
         }
-        
+
         info!("✅ All workers stopped");
         Ok(())
     }
 
     fn handle_event(&self, event: Event) -> Result<()> {
         use notify::event::{AccessKind, AccessMode, ModifyKind, RenameMode};
-        
+
         let ok = matches!(
             event.kind,
             EventKind::Modify(ModifyKind::Name(RenameMode::To))
@@ -244,11 +261,11 @@ impl FileMonitor {
                 | EventKind::Create(_)
                 | EventKind::Access(AccessKind::Close(AccessMode::Write))
         );
-        
+
         if !ok {
             return Ok(());
         }
-        
+
         for path in &event.paths {
             self.queue_scan(path)?;
         }
@@ -266,7 +283,10 @@ impl FileMonitor {
             return Ok(());
         }
 
-        let in_allowed_tree = self.watch_paths.iter().any(|root| real_path.starts_with(root));
+        let in_allowed_tree = self
+            .watch_paths
+            .iter()
+            .any(|root| real_path.starts_with(root));
         if !in_allowed_tree {
             warn!("⚠️  Symlink escape: {}", real_path.display());
             return Ok(());
@@ -305,7 +325,11 @@ impl FileMonitor {
 
         let meta = std::fs::metadata(path)?;
         if meta.len() > MAX_FILE_SIZE {
-            warn!("⚠️  Large file: {} ({}MB)", path.display(), meta.len() / 1024 / 1024);
+            warn!(
+                "⚠️  Large file: {} ({}MB)",
+                path.display(),
+                meta.len() / 1024 / 1024
+            );
             return Ok(());
         }
 
@@ -330,14 +354,14 @@ impl FileMonitor {
             RecommendedAction::Quarantine => {
                 error!("🚨 {}", path.display());
                 ctx.stats.threats_detected.fetch_add(1, Ordering::Relaxed);
-                
+
                 if ctx.notifications_enabled {
                     let _ = Notification::new()
                         .summary("🚨 MALWARE")
                         .body(&path.file_name().unwrap().to_string_lossy())
                         .show();
                 }
-                
+
                 if ctx.auto_quarantine {
                     Self::quarantine_with_hash(path, &ctx.quarantine_dir, &ctx.stats).await?;
                 }
@@ -353,19 +377,22 @@ impl FileMonitor {
         stats: &ScanStats,
     ) -> Result<()> {
         let hash = sha256_file(threat_path)?;
-        
+
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-        let name = threat_path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+        let name = threat_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
         let final_name = format!("{}_{}", timestamp, name);
         let quarantine_path = quarantine_dir.join(&final_name);
-        
+
         let tmp_path = quarantine_path.with_extension("partial");
         move_preserve(threat_path, &tmp_path)?;
         std::fs::rename(&tmp_path, &quarantine_path)?;
-        
+
         error!("✅ Quarantined: {}", final_name);
         stats.threats_quarantined.fetch_add(1, Ordering::Relaxed);
-        
+
         let meta_path = quarantine_dir.join(format!("{}.meta.json", final_name));
         let meta = serde_json::json!({
             "original_path": threat_path.to_string_lossy(),
@@ -377,7 +404,7 @@ impl FileMonitor {
         let tmp_meta = meta_path.with_extension("tmp");
         std::fs::write(&tmp_meta, json)?;
         std::fs::rename(&tmp_meta, &meta_path)?;
-        
+
         Ok(())
     }
 }
@@ -390,13 +417,13 @@ fn move_preserve(src: &Path, dst: &Path) -> io::Result<()> {
         }
         std::fs::remove_file(src)?;
     }
-    
+
     if let Ok(meta) = std::fs::metadata(dst) {
         let at = FileTime::from_system_time(std::time::SystemTime::now());
         let mt = FileTime::from_last_modification_time(&meta);
         let _ = filetime::set_file_times(dst, at, mt);
     }
-    
+
     Ok(())
 }
 

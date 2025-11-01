@@ -1,44 +1,71 @@
 # Contributing to WinnCoreAV
 
-Thanks for your interest in improving ARM64 antivirus!
+Thank you for your interest in contributing!
 
-## How to Contribute
+## Developer Certificate of Origin (DCO)
 
-### 1. Testing on ARM64 Devices
-We need testing on various ARM64 platforms:
-- Document your device specs
-- Run the test suite: `cargo test --all`
-- Report any platform-specific issues
+By submitting a pull request, you certify:
 
-### 2. YARA Rules
-Submit effective malware signatures:
-- Test your rules thoroughly
-- Minimize false positives
-- Document the malware family targeted
+1. **Rights to Contribute:** You have the legal right to submit the code under the project's MIT license.
 
-### 3. Code Contributions
-- Fork the repo
-- Create a feature branch
-- Write tests for new features
-- Ensure `cargo clippy` passes
-- Submit a pull request
+2. **AI-Assisted Code Disclosure:** If you used AI tools (e.g., GitHub Copilot, Claude, GPT-4):
+   - Disclose provider and model in PR template
+   - Confirm you own rights to AI-generated output per provider ToS
+   - Provide prompt source (public URL or "confidential")
+   - Summarize human authorship percentage
 
-### 4. Documentation
-ARM64-specific documentation is especially valuable:
-- Build issues on specific devices
-- Performance characteristics
-- Power efficiency tips
+3. **Third-Party Code:** No proprietary, confidential, or incompatibly-licensed code included without explicit approval.
 
-## Development Setup
+4. **Indemnification:** You indemnify maintainers against claims arising from your contributions, including AI-generated content.
 
-See [docs/ARM64.md](docs/ARM64.md) for build instructions.
+5. **Compliance with Laws:** Your contribution complies with export controls, sanctions, and local IP laws.
+
+## Sign-off
+
+Add `Signed-off-by: Your Name <your.email@example.com>` to commit messages:
+```bash
+git commit -s -m "feat: add feature"
+```
+
+Or configure globally:
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+## AI Provenance Example
+```
+feat(core): add entropy-based heuristic scoring
+
+AI-Assisted: Claude 3.5 Sonnet
+Prompt: Public (https://example.com/prompts/heuristics.md)
+Human-Edit: 70% new logic, 30% AI scaffold
+No third-party code included
+
+Signed-off-by: Jane Doe <jane@example.com>
+```
+
+See [COMPLIANCE.md](COMPLIANCE.md) for full policy.
 
 ## Code Style
 
-- Run `cargo fmt` before committing
-- Fix all `cargo clippy` warnings
+- Run `cargo fmt --all` before committing
+- Ensure `cargo clippy --target aarch64-unknown-linux-gnu -- -D warnings` passes
+- Follow Rust API Guidelines
+
+## Testing
+
 - Add tests for new features
+- Run `tools/scan_repo.sh` locally before pushing
+- Verify CI passes on your branch
+
+## Pull Request Process
+
+1. Fill out PR template completely (including AI disclosure)
+2. Ensure all CI checks pass
+3. Request review from maintainers
+4. Address feedback promptly
 
 ## Questions?
 
-Open an issue or start a discussion!
+Open an issue or email security@winncore.com

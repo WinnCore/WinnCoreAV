@@ -1,5 +1,11 @@
 # Threat Model
 
+**Related Documentation:**  
+[SECURITY.md](../SECURITY.md) · [COMPLIANCE.md](../COMPLIANCE.md) · [README](../README.md)
+
+> ⚠️ **Alpha Software:** ARM64-only. No warranty. Educational/research use.
+
+
 ## Scope
 
 WinnCoreAV is designed for **file-based malware detection** on ARM64 Linux systems.

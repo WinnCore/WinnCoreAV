@@ -1,0 +1,23 @@
+WinnCoreAV
+Copyright (c) 2025 WinnCore
+
+This software is licensed under the MIT License. See LICENSE file.
+
+--------------------------------------------------------------------------------
+
+Third-Party Software Notices and Information
+
+This project incorporates material from third-party open source software
+projects. The following notices apply:
+
+1. Rust Standard Library and Cargo Crates
+   - Licensed under MIT or Apache-2.0 (dual-licensed)
+   - See individual crate licenses via `cargo tree --prefix none | sort -u`
+
+2. YARA (if vendored or statically linked)
+   - Licensed under BSD-3-Clause
+   - Copyright (c) 2007-2024 The YARA Authors
+   - See https://github.com/VirusTotal/yara
+
+No additional attributions required at this time. This file will be updated
+as vendored dependencies are added.

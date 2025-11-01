@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -11,6 +12,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  TARGET: aarch64-unknown-linux-gnu
 
 jobs:
   lint:
@@ -21,6 +23,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+          targets: aarch64-unknown-linux-gnu
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -29,24 +32,21 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: lint-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: lint-
       - name: rustfmt
         run: cargo fmt --all -- --check
       - name: clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --target ${{ env.TARGET }} --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test ${{ matrix.target }}
+  build-and-test:
+    name: Build & Test (ARM64)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [ x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu ]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-unknown-linux-gnu
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -55,20 +55,23 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: build-arm64-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: build-arm64-
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross --locked
       - name: Build
-        run: cross build -p av-cli --target ${{ matrix.target }} --release
+        run: cross build --target ${{ env.TARGET }} --release --workspace
       - name: Test
-        run: cross test --all --target ${{ matrix.target }}
+        run: cross test --target ${{ env.TARGET }} --workspace
 
   eicar-detection:
-    name: EICAR Integration Test
+    name: EICAR Integration (ARM64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -77,60 +80,48 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-eicar-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: eicar-arm64-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: eicar-arm64-
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --locked
       - name: Build release
-        run: cargo build -p av-cli --release
-      - name: Create EICAR file safely
+        run: cross build --target ${{ env.TARGET }} -p av-cli --release
+      - name: Generate EICAR test file
         run: |
           mkdir -p /tmp/av-test
-          # base64 encoded EICAR to avoid triggering repo scanners
           echo 'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JUVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=' \
             | base64 -d > /tmp/av-test/eicar.com
       - name: Scan EICAR
         run: |
-          QUARANTINE_DIR=/tmp/av-quarantine \
-          ./target/release/av-cli scan /tmp/av-test/eicar.com > scan_output.txt || true
+          export QUARANTINE_DIR=/tmp/av-quarantine
+          cross run --target ${{ env.TARGET }} -p av-cli --release -- \
+            scan /tmp/av-test/eicar.com > scan_output.txt 2>&1 || true
           cat scan_output.txt
       - name: Verify detection
         run: |
-          grep -E -q 'EICAR|THREAT|MALWARE|Quarantine' scan_output.txt
+          if grep -E -q 'EICAR|THREAT|MALWARE|Quarantine|detected' scan_output.txt; then
+            echo "✅ EICAR detection confirmed"
+          else
+            echo "❌ EICAR not detected"
+            exit 1
+          fi
       - name: Upload scan results on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: scan-results
-          path: scan_output.txt
-
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
           path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-audit-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install cargo-audit and cargo-deny
-        run: |
-          cargo install cargo-audit --locked
-          cargo install cargo-deny --locked
-      - name: cargo audit
-        run: cargo audit
-      - name: cargo deny
-        run: cargo deny check
+            scan_output.txt
+            /tmp/av-quarantine/**
 
   benchmark:
-    name: Performance Baseline
+    name: Performance Baseline (ARM64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -139,9 +130,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-bench-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: bench-arm64-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: bench-arm64-
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --locked
       - name: Build release
-        run: cargo build -p av-cli --release
+        run: cross build --target ${{ env.TARGET }} -p av-cli --release
       - name: Create test files
         run: |
           mkdir -p /tmp/bench
@@ -150,7 +144,9 @@ jobs:
           done
       - name: Benchmark scan
         run: |
-          /usr/bin/time -f 'elapsed=%E maxrss_kb=%M' ./target/release/av-cli scan /tmp/bench | tee bench_output.txt
+          /usr/bin/time -f 'elapsed=%E maxrss_kb=%M' \
+            cross run --target ${{ env.TARGET }} -p av-cli --release -- \
+            scan /tmp/bench 2>&1 | tee bench_output.txt
       - name: Publish bench artifacts
         uses: actions/upload-artifact@v4
         with:

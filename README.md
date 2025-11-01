@@ -1,5 +1,21 @@
 # WinnCoreAV
 
+> ⚠️ **Alpha Software** — Educational and research use only. **NO WARRANTY** expressed or implied.
+> See [LICENSE](LICENSE) for terms.
+
+**ARM64-only antivirus** built natively for `aarch64-unknown-linux-gnu`. No x86/x86_64 support.
+
+**🔒 Compliance & Security:**  
+[SECURITY.md](SECURITY.md) · [COMPLIANCE.md](COMPLIANCE.md) · [NOTICE](NOTICE)
+
+**⚖️ Lawful Use Only:** This software is intended for malware research, education, and system protection.
+Do not use for unauthorized scanning, reverse engineering of proprietary software, or violation of applicable laws.
+
+**🧪 Test Artifacts:** No malware samples stored in this repository. EICAR and test files are generated at runtime in CI.
+
+---
+
+
 ![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI%20(ARM64%20Only)/badge.svg)
 ![Platform](https://img.shields.io/badge/platform-ARM64%20%7C%20aarch64-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)

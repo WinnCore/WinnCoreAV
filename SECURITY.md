@@ -1,88 +1,93 @@
 # Security Policy
 
-## Reporting Vulnerabilities
+## ⚠️ Alpha Software Notice
 
-**DO NOT** open a public issue for security vulnerabilities.
+WinnCoreAV is **alpha-quality software** provided **AS-IS** with **NO WARRANTY** of any kind, express or implied. Use for educational and research purposes only. Not recommended for production environments.
 
-**Email:** security@winncore.com  
-**Response Time:** Within 48 hours
+**ARM64-only:** This project targets `aarch64-unknown-linux-gnu` exclusively. No x86/x86_64 support.
 
-We follow responsible disclosure practices.
+## Reporting Security Vulnerabilities
+
+**DO NOT** open public issues for security vulnerabilities.
+
+**Contact:** security@winncore.com  
+**Response SLA:** 48 hours acknowledgment  
+**Disclosure Policy:** 90-day coordinated disclosure
+
+### Reporting Guidelines
+
+Include:
+- Detailed description and reproduction steps
+- Affected versions and target architecture (ARM64)
+- Proof-of-concept code (if applicable)
+- Your contact information for follow-up
 
 ## Supported Versions
 
-| Version | Status | Supported |
-|---------|--------|-----------|
-| 0.1.x   | Alpha  | ✅ Yes    |
+| Version | Status | Support |
+|---------|--------|---------|
+| 0.1.x   | Alpha  | ✅ Security fixes |
+| < 0.1   | Unsupported | ❌ No support |
 
 ## Threat Model
 
-### What We Protect Against ✅
+See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for complete details.
 
-- **Malware at rest** - Files on disk with known signatures
-- **YARA-detectable threats** - Pattern-matched malware
-- **EICAR test patterns** - Standard AV test files
-- **File-based droppers** - Basic malware delivery
+### In Scope ✅
 
-### What We DON'T Protect Against ❌
+- File-based malware with known YARA signatures
+- EICAR test patterns
+- Symlink escape attacks
+- Quarantine directory tampering
+- Event flood DoS
 
-- **Kernel-level rootkits** - Requires kernel driver
-- **Fileless malware** - Memory-only execution
-- **Zero-day exploits** - Unknown attack patterns
-- **APTs** - Advanced persistent threats
-- **Network attacks** - Not a firewall
-- **Browser exploits** - No runtime protection
-- **Supply chain attacks** - No build-time scanning
+### Out of Scope ❌
+
+- Kernel-level rootkits
+- Fileless/memory-only malware
+- Zero-day exploits
+- Network-based attacks
+- Process/memory monitoring
+- Browser runtime protection
 
 ## Known Limitations
 
-⚠️ **This is alpha software:**
-- Signature-based detection only (no behavioral analysis)
-- File scanning only (no process/memory monitoring)
-- Limited signature database
-- False positives possible
-- ARM64 primary focus (x86_64 less tested)
+- **Signature-only detection** (no behavioral analysis)
+- **User-space only** (no kernel driver)
+- **Limited YARA rule database**
+- **False positives possible**
+- **ARM64-only** (Snapdragon X, Apple Silicon, Raspberry Pi)
 
-## Security Hardening Status
+## Security Hardening Checklist
+
+For users:
+
+- [ ] Run as unprivileged user (not root)
+- [ ] Monitor quarantine directory (`~/.local/share/winncore-av/quarantine`)
+- [ ] Review JSON logs regularly
+- [ ] Update YARA signatures (manual until auto-update ships)
+- [ ] Use systemd hardening flags (see `winncore-av.service`)
+- [ ] Verify quarantine metadata signatures (when implemented)
+
+## Current Hardening Status
 
 ### ✅ Implemented
-- Worker pool architecture (prevents blocking)
+- Worker pool (prevents blocking)
 - Path canonicalization (symlink protection)
-- Quarantine with 0700 permissions
-- SHA256 hashing for forensics
-- Bounded queue (prevents memory exhaustion)
-- Event debouncing (prevents DoS)
+- 0700 quarantine permissions
+- SHA256 forensic hashing
+- Bounded queue (backpressure)
+- Event debouncing (750ms)
 
 ### 🚧 In Progress
-- [ ] Drop privileges after startup
-- [ ] Seccomp sandboxing
-- [ ] Quarantine metadata signing
-- [ ] Auto-update with verification
-- [ ] AppArmor profile
+- Privilege dropping post-startup
+- Seccomp sandboxing
+- Quarantine metadata signing
+- Signed YARA rule updates
 
-### 📋 Planned
-- [ ] Behavioral heuristics
-- [ ] Memory scanning
-- [ ] Kernel-level hooks (fanotify/eBPF)
-- [ ] Cloud threat intelligence (opt-in)
+## Disclosure Timeline
 
-## Responsible Disclosure
-
-We follow a 90-day disclosure policy:
-1. Report received → Acknowledge within 48 hours
-2. Fix developed and tested
-3. Release prepared
-4. Public disclosure after 90 days or patch release (whichever comes first)
-
-## Security Best Practices
-
-When using WinnCoreAV:
-1. ✅ Keep signatures updated (when auto-update ships)
-2. ✅ Run as unprivileged user
-3. ✅ Monitor quarantine directory
-4. ✅ Review logs regularly
-5. ❌ Don't rely on this as sole security measure
-
-## License
-
-Security fixes are provided under the same MIT license as the project.
+1. **T+0:** Vulnerability reported
+2. **T+48h:** Acknowledgment sent
+3. **T+90d or patch release:** Public disclosure (whichever first)
+4. **CVE assignment** if applicable

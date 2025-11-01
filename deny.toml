@@ -1,16 +1,56 @@
+# cargo-deny configuration for WinnCoreAV
+# Run: cargo deny check
+
+[graph]
+targets = [
+    { triple = "aarch64-unknown-linux-gnu" }
+]
+all-features = true
+
 [advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
 vulnerability = "deny"
 unmaintained = "warn"
-notice = "warn"
+yanked = "warn"
+notice = "deny"
+ignore = []
 
 [licenses]
 unlicensed = "deny"
+confidence-threshold = 0.8
 allow = [
     "MIT",
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
+    "BSD-2-Clause",
     "ISC",
+    "Unlicense",
+    "0BSD",
 ]
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-3.0",
+    "LGPL-2.0",
+    "LGPL-2.1",
+    "LGPL-3.0",
+]
+copyleft = "deny"
+allow-osi-fsf-free = "neither"
+default = "deny"
 
 [bans]
 multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

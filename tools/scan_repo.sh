@@ -54,16 +54,21 @@ else
 fi
 echo ""
 
-# 3. Raw EICAR pattern (broken regex to avoid false trigger)
+# 3. Raw EICAR pattern (construct pattern to avoid self-detection)
 echo "[3/5] Scanning for raw EICAR patterns..."
 if command -v rg &> /dev/null; then
+    # Construct pattern dynamically to avoid matching this script itself
+    PATTERN1="X5O"
+    PATTERN2="P%"
+    PATTERN3="@AP"
+    EICAR_PATTERN="${PATTERN1}.*${PATTERN2}.*${PATTERN3}"
     if rg --type rust --type yaml --type sh --type md \
-        'X5O.*P%.*@AP.*\[4.*PZX' \
+        "$EICAR_PATTERN" \
         --stats 2>&1 | grep -q "0 matches"; then
         echo -e "${GREEN}✅ No raw EICAR patterns found${NC}"
     else
         echo -e "${RED}❌ Raw EICAR-like pattern detected${NC}"
-        rg --type rust --type yaml --type sh --type md 'X5O.*P%.*@AP.*\[4.*PZX' --no-heading
+        rg --type rust --type yaml --type sh --type md "$EICAR_PATTERN" --no-heading
         echo "   Remediation: Use base64-encoded EICAR (see tools/generate_eicar.sh)"
         VIOLATIONS=$((VIOLATIONS + 1))
     fi

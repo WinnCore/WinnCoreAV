@@ -1,5 +1,5 @@
-mod metrics;
 mod monitor;
+mod metrics;
 
 use anyhow::Result;
 use metrics::Metrics;
@@ -15,12 +15,10 @@ async fn main() -> Result<()> {
 
     info!("🛡️  WinnCoreAV v0.1.0");
 
-    // Initialize metrics
     info!("🔧 Initializing metrics...");
     let metrics = Arc::new(Metrics::new()?);
     info!("✅ Metrics initialized");
 
-    // Start metrics HTTP server
     info!("🔧 Starting metrics HTTP server on 127.0.0.1:9090...");
     metrics.start_server("127.0.0.1:9090".to_string());
 

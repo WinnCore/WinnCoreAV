@@ -1,5 +1,9 @@
 # WinnCoreAV
 
+[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+[![CI ARM64](https://github.com/WinnCore/WinnCoreAV/workflows/CI%20ARM64/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+[![Policy Enforcement](https://github.com/WinnCore/WinnCoreAV/workflows/Policy%20Enforcement/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
 > ⚠️ **Alpha Software** — Educational and research use only. **NO WARRANTY** expressed or implied.
 > See [LICENSE](LICENSE) for terms.
 

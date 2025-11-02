@@ -51,9 +51,3 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 serde_json.workspace = true
 toml.workspace = true
 tempfile = "3.23.0"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-panic = "abort"
-strip = "symbols"

@@ -19,6 +19,7 @@ confidence-threshold = 0.8
 
 # Use allow list (replaces old deny/copyleft/default)
 allow = [
+    "Unicode-3.0",
     "MIT",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",

@@ -1,5 +1,7 @@
 [![Production CI](https://github.com/WinnCore/WinnCoreAV/workflows/Production%20CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions) [![CI ARM64](https://github.com/WinnCore/WinnCoreAV/workflows/CI%20ARM64/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
 
+[![Production CI](https://github.com/WinnCore/WinnCoreAV/workflows/Production%20CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions) [![CI ARM64](https://github.com/WinnCore/WinnCoreAV/workflows/CI%20ARM64/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
 [![Production CI](https://github.com/WinnCore/WinnCoreAV/workflows/Production%20CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
 
 [![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
@@ -116,6 +118,51 @@ av-cli quarantine delete <id>
 ```bash
 sudo av-daemon
 ```
+
+## 📊 Metrics & Monitoring
+
+WinnCoreAV exposes Prometheus-compatible metrics on port 9090:
+
+### Available Metrics
+
+**Counters:**
+- `winncore_files_scanned_total` - Total files scanned
+- `winncore_threats_detected_total` - Total threats found
+- `winncore_quarantine_operations_total` - Files quarantined
+- `winncore_scan_errors_total` - Scan failures
+- `winncore_queue_drops_total` - Events dropped (queue full)
+
+**Gauges:**
+- `winncore_queue_depth` - Current queue size
+- `winncore_worker_threads` - Active worker count
+
+**Histograms:**
+- `winncore_scan_duration_seconds` - Scan time distribution
+
+### Usage
+
+View metrics:
+```bash
+curl http://localhost:9090/metrics
+```
+
+Configure Prometheus (prometheus.yml):
+```yaml
+scrape_configs:
+  - job_name: 'winncore-av'
+    static_configs:
+      - targets: ['localhost:9090']
+```
+
+### Grafana Dashboard
+
+Import dashboard ID: TBD (create later)
+
+Key panels:
+- Files scanned/min (rate)
+- Threat detection rate
+- Scan latency (p50, p95, p99)
+- Queue depth over time
 
 ## 🏗️ Architecture
 ```

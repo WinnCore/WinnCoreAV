@@ -1,0 +1,66 @@
+name: Metrics Test
+
+on:
+  push:
+    branches: [main, feature/*]
+  pull_request:
+
+jobs:
+  test-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: metrics-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: metrics-
+
+      - name: Build daemon with metrics
+        run: cargo build -p av-daemon --release
+
+      - name: Start daemon in background
+        run: |
+          cargo run -p av-daemon --release -- --self-test
+          timeout 5 cargo run -p av-daemon --release &
+          DAEMON_PID=$!
+          echo "DAEMON_PID=$DAEMON_PID" >> $GITHUB_ENV
+          sleep 3
+
+      - name: Test metrics endpoint
+        run: |
+          # Test /metrics endpoint
+          curl -f http://localhost:9090/metrics || exit 1
+
+          # Test root endpoint
+          curl -f http://localhost:9090/ || exit 1
+
+          # Verify metrics format
+          if ! curl -s http://localhost:9090/metrics | grep -q "winncore_files_scanned_total"; then
+            echo "❌ Metrics missing winncore_files_scanned_total"
+            exit 1
+          fi
+
+          if ! curl -s http://localhost:9090/metrics | grep -q "winncore_worker_threads"; then
+            echo "❌ Metrics missing winncore_worker_threads"
+            exit 1
+          fi
+
+          echo "✅ Metrics endpoint working correctly"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -n "$DAEMON_PID" ]; then
+            kill $DAEMON_PID || true
+          fi

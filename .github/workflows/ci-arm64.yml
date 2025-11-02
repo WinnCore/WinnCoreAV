@@ -10,6 +10,9 @@ env:
   # Force vendored libyara, no pkg-config
   YARA_NO_PKG_CONFIG: 1
   PKG_CONFIG_ALLOW_CROSS: 0
+  # Use vendored OpenSSL for cross-compilation
+  OPENSSL_STATIC: 1
+  OPENSSL_VENDORED: 1
 
 jobs:
   build-aarch64:

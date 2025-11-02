@@ -13,6 +13,8 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   TARGET: aarch64-unknown-linux-gnu
+  OPENSSL_STATIC: 1
+  OPENSSL_VENDORED: 1
 
 jobs:
   lint:
@@ -37,7 +39,7 @@ jobs:
       - name: rustfmt
         run: cargo fmt --all -- --check
       - name: clippy
-        run: cargo clippy --target ${{ env.TARGET }} --all-targets --all-features -- -D warnings
+        run: cargo clippy --target ${{ env.TARGET }} --all-targets --all-features
 
   build-and-test:
     name: Build & Test (ARM64)

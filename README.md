@@ -1,3 +1,11 @@
+[![Production CI](https://github.com/WinnCore/WinnCoreAV/workflows/Production%20CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
+[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
+[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
+[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+
 # WinnCoreAV
 
 > ⚠️ **Alpha Software** — Educational and research use only. **NO WARRANTY** expressed or implied.

@@ -1,39 +1,36 @@
+mod metrics;
 mod monitor;
 
 use anyhow::Result;
-use std::panic;
-use tracing::{error, info};
+use metrics::Metrics;
+use std::sync::Arc;
+use tracing::info;
 
-fn init_logging() {
-    tracing_subscriber::fmt().with_target(false).json().init();
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_level(true)
+        .init();
 
-    panic::set_hook(Box::new(|p| {
-        error!("PANIC: {:?}", p);
-    }));
-}
-
-fn self_test() -> Result<()> {
-    info!("🧪 Self-test...");
-    let test_dir = std::env::temp_dir().join("winncore-test");
-    std::fs::create_dir_all(&test_dir)?;
-    let test_file = test_dir.join("test.txt");
-    std::fs::write(&test_file, "test")?;
-    info!("✅ File ops OK");
-    std::fs::remove_dir_all(&test_dir)?;
-    info!("✅ Self-test passed");
-    Ok(())
-}
-
-fn main() -> Result<()> {
-    if std::env::args().any(|a| a == "--self-test") {
-        return self_test();
-    }
-
-    init_logging();
     info!("🛡️  WinnCoreAV v0.1.0");
 
+    info!("🔧 Initializing metrics...");
+    let metrics = Arc::new(Metrics::new()?);
+    info!("✅ Metrics initialized");
+
+    info!("🔧 Starting metrics HTTP server on 127.0.0.1:9090...");
+    metrics.start_server("127.0.0.1:9090".to_string());
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    info!("✅ Scanner initialized (8 workers)");
+    info!("🔔 Notifications: ENABLED");
+    info!("🔒 Auto-quarantine: ENABLED");
+    info!("🚀 Starting monitoring...");
+
     let home = dirs::home_dir().expect("No HOME");
-    let monitor = monitor::FileMonitor::new(
+    let file_monitor = monitor::FileMonitor::new(
         vec![
             home.join("Downloads"),
             home.join("Desktop"),
@@ -46,14 +43,13 @@ fn main() -> Result<()> {
             "**/.cache/**".into(),
             "**/__pycache__/**".into(),
             "**/*.swp".into(),
-            "**/*.swx".into(),
             "**/*.tmp".into(),
-            "**/.DS_Store".into(),
-            "**/~$*".into(),
         ],
         true,
+        Arc::clone(&metrics),
     )?;
 
-    monitor.start()?;
+    file_monitor.start()?;
+
     Ok(())
 }

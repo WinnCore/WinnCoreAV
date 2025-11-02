@@ -1,5 +1,6 @@
 //! Production monitoring with owned runtime
 
+use crate::metrics::Metrics;
 use anyhow::Result;
 use av_core::{RecommendedAction, Scanner, ScannerConfig};
 use crossbeam_channel::{bounded, Sender};
@@ -66,6 +67,7 @@ impl Excludes {
 struct WorkerContext {
     scanner: Arc<Scanner>,
     stats: Arc<ScanStats>,
+    metrics: Arc<Metrics>,
     excludes: Arc<Excludes>,
     quarantine_dir: PathBuf,
     auto_quarantine: bool,
@@ -77,6 +79,8 @@ pub struct FileMonitor {
     quarantine_dir: PathBuf,
     tx: Arc<Mutex<Option<Sender<PathBuf>>>>,
     stats: Arc<ScanStats>,
+    #[allow(dead_code)]
+    metrics: Arc<Metrics>,
     stop: Arc<AtomicBool>,
     debounce: Arc<Mutex<LruCache<PathBuf, Instant>>>,
     runtime: Runtime,
@@ -88,6 +92,7 @@ impl FileMonitor {
         paths: Vec<PathBuf>,
         exclude_patterns: Vec<String>,
         auto_quarantine: bool,
+        metrics: Arc<Metrics>,
     ) -> Result<Self> {
         #[cfg(target_family = "unix")]
         unsafe {
@@ -134,6 +139,7 @@ impl FileMonitor {
             quarantine_dir: quarantine_dir.clone(),
             auto_quarantine,
             notifications_enabled,
+            metrics: Arc::clone(&metrics),
         });
 
         let mut worker_handles = Vec::new();
@@ -174,6 +180,7 @@ impl FileMonitor {
             quarantine_dir,
             tx: Arc::new(Mutex::new(Some(tx))),
             stats,
+            metrics,
             stop: Arc::new(AtomicBool::new(false)),
             debounce: Arc::new(Mutex::new(LruCache::with_expiry_duration(
                 Duration::from_millis(750),
@@ -335,8 +342,25 @@ impl FileMonitor {
 
         info!("🔍 {}", path.display());
         ctx.stats.files_scanned.fetch_add(1, Ordering::Relaxed);
+        ctx.metrics.files_scanned.inc();
 
-        let outcome = ctx.scanner.scan_path(path).await?;
+        ctx.metrics.active_scans.inc();
+        let scan_start = Instant::now();
+        let scan_result = ctx.scanner.scan_path(path).await;
+        let duration = scan_start.elapsed().as_secs_f64();
+        ctx.metrics.scan_duration_seconds.observe(duration);
+
+        let outcome = match scan_result {
+            Ok(outcome) => {
+                ctx.metrics.active_scans.dec();
+                outcome
+            }
+            Err(err) => {
+                ctx.metrics.active_scans.dec();
+                ctx.stats.scan_errors.fetch_add(1, Ordering::Relaxed);
+                return Err(err);
+            }
+        };
 
         match outcome.recommended_action {
             RecommendedAction::Allow => {
@@ -354,6 +378,7 @@ impl FileMonitor {
             RecommendedAction::Quarantine => {
                 error!("🚨 {}", path.display());
                 ctx.stats.threats_detected.fetch_add(1, Ordering::Relaxed);
+                ctx.metrics.threats_detected.inc();
 
                 if ctx.notifications_enabled {
                     let _ = Notification::new()

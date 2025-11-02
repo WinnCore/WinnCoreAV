@@ -28,15 +28,51 @@ allow = [
     "ISC",
     "Unlicense",
     "0BSD",
+    "CC0-1.0",        # Public domain dedication (used by some testing libs)
+    "MPL-2.0",        # Mozilla Public License (weak copyleft, compatible)
+    "Zlib",           # Permissive license
+    "BSL-1.0",        # Boost Software License
 ]
 
-# Licenses to reject (instead of old deny = [...])
+# Handle deprecated SPDX identifiers
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 }
 ]
+
+# Override for dependencies with deprecated/non-standard licenses
+[[licenses.clarify]]
+name = "unicode-ident"
+expression = "(MIT OR Apache-2.0) AND Unicode-3.0"
+license-files = [{ path = "LICENSE-UNICODE", hash = 0x3b8a605 }]
+
+# Ignore private workspace crates (they inherit from workspace)
+[[licenses.clarify]]
+name = "av-core"
+expression = "MIT"
+license-files = []
+
+[[licenses.clarify]]
+name = "av-daemon"
+expression = "MIT"
+license-files = []
+
+[[licenses.clarify]]
+name = "av-cli"
+expression = "MIT"
+license-files = []
+
+[[licenses.clarify]]
+name = "av-signatures"
+expression = "MIT"
+license-files = []
+
+[[licenses.clarify]]
+name = "av-quarantine"
+expression = "MIT"
+license-files = []
 
 [bans]
 multiple-versions = "warn"

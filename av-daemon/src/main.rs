@@ -2,7 +2,6 @@ mod metrics;
 mod monitor;
 
 use anyhow::Result;
-<<<<<<< HEAD
 use metrics::Metrics;
 use std::sync::Arc;
 use tracing::info;
@@ -12,24 +11,16 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_target(false)
         .with_level(true)
-=======
-use metrics::*;
-use std::panic;
-use tracing::{error, info};
-
-fn init_logging() {
-    tracing_subscriber::fmt()
-        .with_target(false)
->>>>>>> claude/prometheus-metrics-011CUgPhmcQJyzPKUycQrphV
         .init();
 
     info!("🛡️  WinnCoreAV v0.1.0");
 
-<<<<<<< HEAD
+    // Initialize metrics
     info!("🔧 Initializing metrics...");
     let metrics = Arc::new(Metrics::new()?);
     info!("✅ Metrics initialized");
 
+    // Start metrics HTTP server
     info!("🔧 Starting metrics HTTP server on 127.0.0.1:9090...");
     metrics.start_server("127.0.0.1:9090".to_string());
 
@@ -39,17 +30,6 @@ fn init_logging() {
     info!("🔔 Notifications: ENABLED");
     info!("🔒 Auto-quarantine: ENABLED");
     info!("🚀 Starting monitoring...");
-=======
-    // Start metrics server
-    if let Err(e) = metrics::start_metrics_server(9090) {
-        error!("Failed to start metrics server: {}", e);
-    } else {
-        info!("📊 Metrics available at http://localhost:9090/metrics");
-    }
-
-    // Initialize worker count gauge
-    WORKER_THREADS.set(num_cpus::get() as f64);
->>>>>>> claude/prometheus-metrics-011CUgPhmcQJyzPKUycQrphV
 
     let home = dirs::home_dir().expect("No HOME");
     let file_monitor = monitor::FileMonitor::new(

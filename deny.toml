@@ -1,5 +1,4 @@
 # cargo-deny configuration for WinnCoreAV
-# Updated for cargo-deny 0.16.0+ (deprecated fields removed)
 
 [graph]
 targets = [
@@ -16,63 +15,35 @@ ignore = []
 [licenses]
 version = 2
 confidence-threshold = 0.8
+unlicensed = "deny"
+copyleft = "deny"
+allow = ["MIT","Apache-2.0","BSD-3-Clause","BSD-2-Clause","ISC","Zlib","0BSD","GPL-2.0-only","LGPL-2.1-only"]
 
-# Use allow list (replaces old deny/copyleft/default)
-allow = [
-    "Unicode-3.0",
-    "MIT",
-    "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-3-Clause",
-    "BSD-2-Clause",
-    "ISC",
-    "Unlicense",
-    "0BSD",
-    "CC0-1.0",        # Public domain dedication (used by some testing libs)
-    "MPL-2.0",        # Mozilla Public License (weak copyleft, compatible)
-    "Zlib",           # Permissive license
-    "BSL-1.0",        # Boost Software License
-]
+# Map deprecated SPDX identifiers to modern equivalents
+[[licenses.clarify]]
+name = "bloom"
+version = "0.3.2"
+expression = "GPL-2.0-only"
+license-files = []
 
-# Handle deprecated SPDX identifiers
+[[licenses.clarify]]
+name = "seccomp"
+version = "0.1.2"
+expression = "LGPL-2.1-only"
+license-files = []
+
+[[licenses.clarify]]
+name = "seccomp-sys"
+version = "0.1.3"
+expression = "LGPL-2.1-only"
+license-files = []
+
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 }
 ]
-
-# Override for dependencies with deprecated/non-standard licenses
-[[licenses.clarify]]
-name = "unicode-ident"
-expression = "(MIT OR Apache-2.0) AND Unicode-3.0"
-license-files = [{ path = "LICENSE-UNICODE", hash = 0x3b8a605 }]
-
-# Ignore private workspace crates (they inherit from workspace)
-[[licenses.clarify]]
-name = "av-core"
-expression = "MIT"
-license-files = []
-
-[[licenses.clarify]]
-name = "av-daemon"
-expression = "MIT"
-license-files = []
-
-[[licenses.clarify]]
-name = "av-cli"
-expression = "MIT"
-license-files = []
-
-[[licenses.clarify]]
-name = "av-signatures"
-expression = "MIT"
-license-files = []
-
-[[licenses.clarify]]
-name = "av-quarantine"
-expression = "MIT"
-license-files = []
 
 [bans]
 multiple-versions = "warn"

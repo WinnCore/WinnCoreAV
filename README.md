@@ -278,3 +278,9 @@ $ ~/winncore-quarantine list
 
 **Status:** Production-ready and actively protecting the system.
 
+
+## Safe EICAR sample for tests
+
+```bash
+printf "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=" | base64 -d > /tmp/eicar.txt
+```

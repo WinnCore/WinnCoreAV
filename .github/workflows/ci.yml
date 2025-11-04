@@ -20,11 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.90.0"
           components: rustfmt
-      
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -33,11 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: dtolnay/rust-toolchain@master
         with:
-          components: clippy
-      
+          toolchain: "1.90.0"
+          components: clippy, rustfmt
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -48,18 +50,20 @@ jobs:
             target
           key: clippy-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: clippy-
-      
+
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   build:
     name: Build (Native x86_64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: dtolnay/rust-toolchain@stable
-      
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90.0"
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -70,10 +74,10 @@ jobs:
             target
           key: build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: build-
-      
+
       - name: Build all packages
         run: cargo build --release --workspace --verbose
-      
+
       - name: Build succeeds
         run: echo "✅ Build completed successfully"
 
@@ -82,9 +86,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: dtolnay/rust-toolchain@stable
-      
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90.0"
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -95,18 +101,20 @@ jobs:
             target
           key: test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: test-
-      
+
       - name: Run tests
-        run: cargo test --workspace --verbose
+        run: cargo test --workspace --all-features
 
   eicar-test:
     name: EICAR Detection Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: dtolnay/rust-toolchain@stable
-      
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90.0"
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:

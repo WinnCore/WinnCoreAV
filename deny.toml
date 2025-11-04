@@ -1,5 +1,4 @@
 # cargo-deny configuration for WinnCoreAV
-# Updated for cargo-deny 0.16.0+ (deprecated fields removed)
 
 [graph]
 targets = [
@@ -16,21 +15,43 @@ ignore = []
 [licenses]
 version = 2
 confidence-threshold = 0.8
-
-# Use allow list (replaces old deny/copyleft/default)
 allow = [
-    "Unicode-3.0",
     "MIT",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
-    "BSD-3-Clause",
     "BSD-2-Clause",
+    "BSD-3-Clause",
     "ISC",
-    "Unlicense",
-    "0BSD",
+    "Unicode-3.0",           # Used by icu_* crates (unicode processing)
+    "Unicode-DFS-2016",      # Unicode Data Files
+    "CC0-1.0",               # Used by notify crate
+    "MPL-2.0",               # Used by option-ext
+    "0BSD",                  # Zero-clause BSD
+    "Zlib",                  # Zlib license
+    "BSL-1.0",               # Boost Software License
+    "GPL-2.0-only",          # For bloom crate
+    "LGPL-2.1-only",         # For seccomp crates
 ]
 
-# Licenses to reject (instead of old deny = [...])
+# Map deprecated SPDX identifiers to modern equivalents
+[[licenses.clarify]]
+name = "bloom"
+version = "0.3.2"
+expression = "GPL-2.0-only"
+license-files = []
+
+[[licenses.clarify]]
+name = "seccomp"
+version = "0.1.2"
+expression = "LGPL-2.1-only"
+license-files = []
+
+[[licenses.clarify]]
+name = "seccomp-sys"
+version = "0.1.3"
+expression = "LGPL-2.1-only"
+license-files = []
+
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"

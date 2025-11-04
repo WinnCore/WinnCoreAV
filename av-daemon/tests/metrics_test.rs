@@ -1,10 +1,5 @@
-use std::time::Duration;
-
 #[test]
 fn test_metrics_endpoint_availability() {
-    // Start metrics server on a test port
-    let port = 19090;
-
     // This test verifies that the metrics server can be started
     // In a real scenario, we'd start the daemon and query the endpoint
     // For now, we just verify the module compiles and basic functionality

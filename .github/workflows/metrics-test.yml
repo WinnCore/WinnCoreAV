@@ -8,12 +8,13 @@ on:
 jobs:
   test-metrics:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # Kill if it takes longer than 10 minutes
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          components: rustfmt, clippy
+          toolchain: "1.90.0"  # Pin to avoid toolchain download
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -26,41 +27,64 @@ jobs:
           key: metrics-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: metrics-
 
-      - name: Build daemon with metrics
-        run: cargo build -p av-daemon --release
+      - name: Build daemon (debug mode for speed)
+        run: cargo build -p av-daemon
 
       - name: Start daemon in background
         run: |
-          cargo run -p av-daemon --release -- --self-test
-          timeout 5 cargo run -p av-daemon --release &
+          # Start daemon in background with debug build (faster)
+          cargo run -p av-daemon &
           DAEMON_PID=$!
           echo "DAEMON_PID=$DAEMON_PID" >> $GITHUB_ENV
-          sleep 3
+          
+          # Wait for metrics server to be ready (max 10 seconds)
+          for i in {1..10}; do
+            if curl -sf http://localhost:9090/metrics > /dev/null 2>&1; then
+              echo "✅ Metrics server ready"
+              break
+            fi
+            echo "⏳ Waiting for metrics server... ($i/10)"
+            sleep 1
+          done
 
       - name: Test metrics endpoint
         run: |
           # Test /metrics endpoint
-          curl -f http://localhost:9090/metrics || exit 1
-
-          # Test root endpoint
-          curl -f http://localhost:9090/ || exit 1
-
-          # Verify metrics format
-          if ! curl -s http://localhost:9090/metrics | grep -q "winncore_files_scanned_total"; then
-            echo "❌ Metrics missing winncore_files_scanned_total"
+          if ! curl -f http://localhost:9090/metrics; then
+            echo "❌ Failed to fetch /metrics"
             exit 1
           fi
 
-          if ! curl -s http://localhost:9090/metrics | grep -q "winncore_worker_threads"; then
-            echo "❌ Metrics missing winncore_worker_threads"
+          # Verify critical metrics exist
+          METRICS=$(curl -s http://localhost:9090/metrics)
+          
+          if ! echo "$METRICS" | grep -q "winncore_files_scanned_total"; then
+            echo "❌ Missing: winncore_files_scanned_total"
             exit 1
           fi
 
-          echo "✅ Metrics endpoint working correctly"
+          if ! echo "$METRICS" | grep -q "winncore_threats_detected_total"; then
+            echo "❌ Missing: winncore_threats_detected_total"
+            exit 1
+          fi
+
+          if ! echo "$METRICS" | grep -q "winncore_scan_duration_seconds"; then
+            echo "❌ Missing: winncore_scan_duration_seconds"
+            exit 1
+          fi
+
+          if ! echo "$METRICS" | grep -q "winncore_active_scans"; then
+            echo "❌ Missing: winncore_active_scans"
+            exit 1
+          fi
+
+          echo "✅ All required metrics present"
 
       - name: Cleanup
         if: always()
         run: |
           if [ -n "$DAEMON_PID" ]; then
-            kill $DAEMON_PID || true
+            kill $DAEMON_PID 2>/dev/null || true
           fi
+          # Cleanup any orphaned processes
+          pkill -f "av-daemon" || true

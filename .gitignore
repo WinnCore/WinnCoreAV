@@ -20,6 +20,11 @@ test_screenshots/
 build.log
 *.txt
 
+# Session documentation (local only)
+CLAUDE_SESSION_SUMMARY.md
+check_ci_status.sh
+TELL_CLAUDE.txt
+
 # AV specific
 /quarantine/
 *.yar

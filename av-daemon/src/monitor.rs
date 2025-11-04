@@ -79,8 +79,6 @@ pub struct FileMonitor {
     quarantine_dir: PathBuf,
     tx: Arc<Mutex<Option<Sender<PathBuf>>>>,
     stats: Arc<ScanStats>,
-    #[allow(dead_code)]
-    metrics: Arc<Metrics>,
     stop: Arc<AtomicBool>,
     debounce: Arc<Mutex<LruCache<PathBuf, Instant>>>,
     runtime: Runtime,
@@ -180,7 +178,6 @@ impl FileMonitor {
             quarantine_dir,
             tx: Arc::new(Mutex::new(Some(tx))),
             stats,
-            metrics,
             stop: Arc::new(AtomicBool::new(false)),
             debounce: Arc::new(Mutex::new(LruCache::with_expiry_duration(
                 Duration::from_millis(750),

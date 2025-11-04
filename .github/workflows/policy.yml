@@ -57,8 +57,12 @@ jobs:
           echo "✅ No GPL headers found"
       - name: Block raw EICAR pattern
         run: |
+          # Construct pattern dynamically to avoid self-detection
+          PART1="X5O"
+          PART2="P%"
+          PART3="@AP"
           if rg --type rust --type yaml --type sh --type md \
-            'X5O.*P%.*@AP.*\[4.*PZX' .; then
+            "${PART1}.*${PART2}.*${PART3}" .; then
             echo "❌ Raw EICAR-like pattern detected"
             echo "Use base64 encoding for test artifacts"
             exit 1

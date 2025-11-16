@@ -36,3 +36,4 @@ ml-training/features*.csv
 ml-training/*.log
 models/*.txt
 *.onnx
+test_model_path

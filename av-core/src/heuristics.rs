@@ -10,46 +10,68 @@ use av_ml_detector::MlDetector;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct Score(pub f32);
 
-/// Score a file using ML malware detection
-/// 
-/// This function:
-/// 1. Loads the trained ONNX model
-/// 2. Extracts 14 features from the binary
-/// 3. Runs ML inference
-/// 4. Returns malware probability as score
 pub fn score(path: &Path, _data: &[u8], config: &ScannerConfig) -> Score {
-    // Try to load ML detector and scan
+    eprintln!("🔍 [HEURISTICS] Starting ML scan for: {:?}", path);
+    
     match load_and_scan_ml(path) {
-        Ok(score) => Score(score),
+        Ok(score) => {
+            eprintln!("✅ [HEURISTICS] ML returned score: {}", score);
+            Score(score)
+        }
         Err(e) => {
-            tracing::warn!("ML detection failed for {:?}: {}", path, e);
-            // Fall back to placeholder on error
+            eprintln!("❌ [HEURISTICS] ML FAILED: {:?}", e);
+            eprintln!("   Error details: {}", e);
+            let mut source = e.source();
+            while let Some(s) = source {
+                eprintln!("   Caused by: {}", s);
+                source = s.source();
+            }
             Score(config.heuristic_threshold / 2.0)
         }
     }
 }
 
-/// Load ML detector and scan a file
 fn load_and_scan_ml(path: &Path) -> anyhow::Result<f32> {
-    // Model path - adjust if your model is elsewhere
-    let model_path = "models/gbm_v3_hardened.onnx";
+    let possible_paths = vec![
+        std::env::var("HOME").ok()
+            .map(|h| format!("{}/projects/WinnCoreAV/models/gbm_v3_hardened.onnx", h)),
+        Some("/home/zacharywinn/projects/WinnCoreAV/models/gbm_v3_hardened.onnx".to_string()),
+        Some("models/gbm_v3_hardened.onnx".to_string()),
+        Some("../models/gbm_v3_hardened.onnx".to_string()),
+    ];
     
-    // Load ML detector
-    let detector = MlDetector::new(model_path)?;
+    eprintln!("🔍 [ML] Searching for model file...");
+    let mut model_path = None;
+    for p in possible_paths.into_iter().flatten() {
+        eprintln!("   Trying: {}", p);
+        if std::path::Path::new(&p).exists() {
+            eprintln!("   ✅ Found at: {}", p);
+            model_path = Some(p);
+            break;
+        } else {
+            eprintln!("   ❌ Not found");
+        }
+    }
     
-    // Scan file
-    let detection = detector.scan(path)?;
+    let model_path = model_path.ok_or_else(|| anyhow::anyhow!("Model file not found in any location"))?;
     
-    // Log detection for debugging
-    tracing::info!(
-        "ML scan: {:?} - score: {:.3}, malicious: {}, confidence: {:?}",
-        path.file_name().unwrap_or_default(),
-        detection.score,
-        detection.is_malicious,
-        detection.confidence
-    );
+    eprintln!("🔍 [ML] Loading detector from: {}", model_path);
+    let detector = MlDetector::new(&model_path)
+        .map_err(|e| {
+            eprintln!("❌ [ML] MlDetector::new() failed: {:?}", e);
+            e
+        })?;
     
-    // Return score (0.0 - 1.0)
+    eprintln!("🔍 [ML] Scanning file: {:?}", path);
+    let detection = detector.scan(path)
+        .map_err(|e| {
+            eprintln!("❌ [ML] detector.scan() failed: {:?}", e);
+            e
+        })?;
+    
+    eprintln!("✅ [ML] Scan complete - score: {:.3}, malicious: {}", 
+              detection.score, detection.is_malicious);
+    
     Ok(detection.score)
 }
 
@@ -58,12 +80,10 @@ pub fn recommend(
     score: Score,
     config: &ScannerConfig,
 ) -> crate::RecommendedAction {
-    // YARA signature match = immediate quarantine
     if !matches.is_empty() {
         return crate::RecommendedAction::Quarantine;
     }
     
-    // ML-based decision thresholds
     if score.0 >= config.heuristic_threshold {
         crate::RecommendedAction::Quarantine
     } else if score.0 >= config.heuristic_threshold * 0.6 {

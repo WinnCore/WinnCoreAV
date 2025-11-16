@@ -1,5 +1,6 @@
 //! Production monitoring with owned runtime
 
+use crate::dedup::ScanDeduplicator;
 use crate::metrics::Metrics;
 use anyhow::Result;
 use av_core::{RecommendedAction, Scanner, ScannerConfig};
@@ -72,6 +73,7 @@ struct WorkerContext {
     quarantine_dir: PathBuf,
     auto_quarantine: bool,
     notifications_enabled: bool,
+    dedup: Arc<ScanDeduplicator>,
 }
 
 pub struct FileMonitor {
@@ -130,6 +132,9 @@ impl FileMonitor {
         let workers = num_cpus::get().max(2);
         info!("✅ Scanner initialized ({} workers)", workers);
 
+        // Create scan deduplicator to prevent scanning files multiple times
+        let dedup = Arc::new(ScanDeduplicator::new());
+
         let ctx = Arc::new(WorkerContext {
             scanner,
             stats: stats.clone(),
@@ -138,6 +143,7 @@ impl FileMonitor {
             auto_quarantine,
             notifications_enabled,
             metrics: Arc::clone(&metrics),
+            dedup,
         });
 
         let mut worker_handles = Vec::new();
@@ -322,6 +328,13 @@ impl FileMonitor {
     }
 
     async fn scan_worker(path: &Path, ctx: &WorkerContext) -> Result<()> {
+        // Deduplicate scans - skip if scanned recently (within 5 seconds)
+        // This prevents scanning the same file 4x when inotify triggers multiple events
+        let path_str = path.to_string_lossy().to_string();
+        if !ctx.dedup.should_scan(&path_str).await {
+            return Ok(()); // Already scanned recently
+        }
+
         if ctx.excludes.is_excluded(path) {
             ctx.stats.files_excluded.fetch_add(1, Ordering::Relaxed);
             return Ok(());

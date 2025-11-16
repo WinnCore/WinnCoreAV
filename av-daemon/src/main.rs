@@ -1,3 +1,4 @@
+mod dedup;
 mod metrics;
 mod monitor;
 

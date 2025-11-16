@@ -31,15 +31,25 @@ pub fn score(path: &Path, _data: &[u8], config: &ScannerConfig) -> Score {
 
 /// Load ML detector and scan a file
 fn load_and_scan_ml(path: &Path) -> anyhow::Result<f32> {
-    // Model path - adjust if your model is elsewhere
-    let model_path = "models/gbm_v3_hardened.onnx";
-    
+    // FIXED: Search for model in common locations (works from any directory)
+    let possible_paths = vec![
+        "/home/user/WinnCoreAV/models/gbm_v3_hardened.onnx",  // Absolute path (most reliable)
+        "models/gbm_v3_hardened.onnx",                         // Relative from project root
+        "../models/gbm_v3_hardened.onnx",                      // Relative from subdirectory
+    ];
+
+    let model_path = possible_paths.into_iter()
+        .find(|p| std::path::Path::new(p).exists())
+        .ok_or_else(|| anyhow::anyhow!("Cannot find gbm_v3_hardened.onnx model file. Searched: /home/user/WinnCoreAV/models/, models/, ../models/"))?;
+
+    tracing::info!("Loading ML model from: {}", model_path);
+
     // Load ML detector
     let detector = MlDetector::new(model_path)?;
-    
+
     // Scan file
     let detection = detector.scan(path)?;
-    
+
     // Log detection for debugging
     tracing::info!(
         "ML scan: {:?} - score: {:.3}, malicious: {}, confidence: {:?}",
@@ -48,7 +58,7 @@ fn load_and_scan_ml(path: &Path) -> anyhow::Result<f32> {
         detection.is_malicious,
         detection.confidence
     );
-    
+
     // Return score (0.0 - 1.0)
     Ok(detection.score)
 }

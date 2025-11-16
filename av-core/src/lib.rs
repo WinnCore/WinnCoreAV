@@ -26,6 +26,7 @@ pub mod heuristics;
 pub mod monitoring;
 pub mod network_monitor;
 pub mod process_tree;
+pub mod response;
 pub mod signatures;
 pub mod telemetry;
 
@@ -35,6 +36,7 @@ pub use config::ScannerConfig;
 pub use fileless::{FilelessDetector, FilelessEvent, FilelessStats, FilelessTechnique};
 pub use network_monitor::{NetworkEvent, NetworkEventType, NetworkMonitor, NetworkStats};
 pub use process_tree::{ProcessTree, ProcessRelationship, analyze_relationship, build_process_tree};
+pub use response::{ResponseAction, ResponseEngine, ResponseResult};
 
 use std::path::Path;
 

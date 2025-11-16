@@ -45,6 +45,10 @@ enum ScanCmd {
         path: String,
         #[arg(short, long, help = "Output in JSON format")]
         json: bool,
+        #[arg(long, help = "Enable automated threat response (kill/block)")]
+        auto_respond: bool,
+        #[arg(long, default_value = "0.85", help = "Minimum score for auto-response (0.0-1.0)")]
+        auto_respond_threshold: f32,
     },
     #[command(about = "Scan a directory")]
     Dir {
@@ -54,6 +58,10 @@ enum ScanCmd {
         recursive: bool,
         #[arg(short, long, help = "Output in JSON format")]
         json: bool,
+        #[arg(long, help = "Enable automated threat response (kill/block)")]
+        auto_respond: bool,
+        #[arg(long, default_value = "0.85", help = "Minimum score for auto-response (0.0-1.0)")]
+        auto_respond_threshold: f32,
     },
 }
 
@@ -228,7 +236,7 @@ async fn handle_scan(cmd: ScanCmd) -> Result<()> {
     let config = ScannerConfig::default();
 
     match cmd {
-        ScanCmd::File { path, json } => {
+        ScanCmd::File { path, json, auto_respond, auto_respond_threshold } => {
             let ctx = ScanContext {
                 target: std::path::PathBuf::from(&path),
             };
@@ -238,6 +246,27 @@ async fn handle_scan(cmd: ScanCmd) -> Result<()> {
             let behavioral_monitor = av_core::BehavioralMonitor::new();
             match behavioral_monitor.get_event_summary(std::time::Duration::from_secs(300)) {
                 Ok(summary) => {
+                    // Calculate behavioral score
+                    let scoring_engine = av_core::BehavioralScoringEngine::new();
+                    let behavioral_score = scoring_engine.calculate_score(&summary);
+
+                    // Check for automated response
+                    if auto_respond {
+                        let response_engine = av_core::ResponseEngine::with_auto_respond(auto_respond_threshold);
+                        let responses = response_engine.respond_to_threat(&behavioral_score, &summary);
+
+                        // Display response results
+                        if !responses.is_empty() {
+                            println!("\n🚨 AUTO-RESPONSE TRIGGERED 🚨");
+                            println!("═══════════════════════════════════════════════════════════");
+                            for response in &responses {
+                                let status = if response.success { "✓" } else { "✗" };
+                                println!("{} {:?}: {}", status, response.action, response.details);
+                            }
+                            println!("═══════════════════════════════════════════════════════════\n");
+                        }
+                    }
+
                     result.behavioral_summary = Some(summary);
                 }
                 Err(_) => {
@@ -256,8 +285,13 @@ async fn handle_scan(cmd: ScanCmd) -> Result<()> {
             path,
             recursive,
             json,
+            auto_respond,
+            auto_respond_threshold,
         } => {
             println!("Scanning directory: {} (recursive: {})", path, recursive);
+            if auto_respond {
+                println!("Auto-response enabled with threshold: {}", auto_respond_threshold);
+            }
             if json {
                 println!("{{\"status\": \"scanning\", \"path\": \"{}\"}}", path);
             }

@@ -1,41 +1,20 @@
 [package]
 name = "av-core"
-edition = "2021"
-version = "0.1.0"
-license.workspace = true
-publish = false
-
-[lib]
-name = "av_core"
-path = "src/lib.rs"
-
-[features]
-default = []
-neon_accel = []
-ebpf_probes = []
-landlock_confine = []
-battery_saver = []
-yara_cfg_api = []
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-bytes.workspace = true
 tokio.workspace = true
-async-trait.workspace = true
-rayon = { workspace = true, optional = true }
-parking_lot.workspace = true
-config.workspace = true
-rand.workspace = true
-sha2.workspace = true
-goblin.workspace = true
+tracing.workspace = true
 yara.workspace = true
-bloom.workspace = true
-walkdir.workspace = true
+
+# Missing dependencies that other modules need
 chrono.workspace = true
+url.workspace = true
 semver.workspace = true
-url = "^2"
-base64.workspace = true
+
+# Add ML detector
+av-ml-detector = { path = "../av-ml-detector" }

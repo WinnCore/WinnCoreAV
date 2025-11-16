@@ -29,3 +29,10 @@ TELL_CLAUDE.txt
 /quarantine/
 *.yar
 !signatures/yara/*.yar
+
+# ML Training
+ml-training/samples/
+ml-training/features*.csv
+ml-training/*.log
+models/*.txt
+*.onnx

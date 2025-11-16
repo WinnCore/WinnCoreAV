@@ -54,6 +54,7 @@ pub async fn scan_path(
         heuristic_score,
         entropy,
         recommended_action,
+        behavioral_summary: None, // Will be populated by CLI/daemon
     })
 }
 
@@ -71,10 +72,10 @@ rule EICAR_Test_File
 {
     meta:
         description = "EICAR Anti-Virus Test File"
-        
+
     strings:
-        // EICAR pattern defined in eicar.yar (base64 encoded)
-        
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+
     condition:
         $eicar
 }

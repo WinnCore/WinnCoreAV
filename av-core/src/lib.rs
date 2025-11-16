@@ -17,14 +17,22 @@
 //! - YARA-compatible rules are validated before execution, and every
 //!   decision passes through the heuristic fusion layer for suppressions.
 
+pub mod behavioral;
 pub mod config;
 pub mod engine;
+pub mod fileless;
 pub mod heuristics;
 pub mod monitoring;
+pub mod network_monitor;
+pub mod process_tree;
 pub mod signatures;
 pub mod telemetry;
 
+pub use behavioral::{BehavioralMonitor, EventSummary, LotlEvent, LotlEventType};
 pub use config::ScannerConfig;
+pub use fileless::{FilelessDetector, FilelessEvent, FilelessStats, FilelessTechnique};
+pub use network_monitor::{NetworkEvent, NetworkEventType, NetworkMonitor, NetworkStats};
+pub use process_tree::{ProcessTree, ProcessRelationship, analyze_relationship, build_process_tree};
 
 use std::path::Path;
 
@@ -68,6 +76,8 @@ pub struct ScanOutcome {
     pub heuristic_score: heuristics::Score,
     pub entropy: engine::EntropyReport,
     pub recommended_action: RecommendedAction,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub behavioral_summary: Option<EventSummary>,
 }
 
 /// The scanner only *recommends* actions; mutating options are left to

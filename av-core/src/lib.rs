@@ -18,6 +18,7 @@
 //!   decision passes through the heuristic fusion layer for suppressions.
 
 pub mod behavioral;
+pub mod behavioral_score;
 pub mod config;
 pub mod engine;
 pub mod fileless;
@@ -29,6 +30,7 @@ pub mod signatures;
 pub mod telemetry;
 
 pub use behavioral::{BehavioralMonitor, EventSummary, LotlEvent, LotlEventType};
+pub use behavioral_score::{BehavioralScore, BehavioralScoringEngine, ComponentScores, RiskLevel};
 pub use config::ScannerConfig;
 pub use fileless::{FilelessDetector, FilelessEvent, FilelessStats, FilelessTechnique};
 pub use network_monitor::{NetworkEvent, NetworkEventType, NetworkMonitor, NetworkStats};

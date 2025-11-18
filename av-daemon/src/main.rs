@@ -1,10 +1,7 @@
-mod metrics;
-mod monitor;
-
 use anyhow::Result;
-use metrics::Metrics;
 use std::sync::Arc;
 use tracing::info;
+use winncore_monitor::{FileMonitor, metrics::Metrics};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,7 +29,7 @@ async fn main() -> Result<()> {
     info!("🚀 Starting monitoring...");
 
     let home = dirs::home_dir().expect("No HOME");
-    let file_monitor = monitor::FileMonitor::new(
+    let file_monitor = FileMonitor::new(
         vec![
             home.join("Downloads"),
             home.join("Desktop"),

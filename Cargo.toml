@@ -2,10 +2,11 @@
 resolver = "2"
 members = [
     "av-core",
-    "av-signatures", 
+    "av-signatures",
     "av-daemon",
     "av-cli",
     "av-quarantine",
+    "winncore-monitor",
 ]
 
 [workspace.package]

@@ -16,5 +16,5 @@ chrono.workspace = true
 url.workspace = true
 semver.workspace = true
 
-# Add ML detector
-av-ml-detector = { path = "../av-ml-detector" }
+# Add ML detector (temporarily disabled to fix build)
+# av-ml-detector = { path = "../av-ml-detector" }

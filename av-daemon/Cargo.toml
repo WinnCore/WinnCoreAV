@@ -15,6 +15,7 @@ battery_saver = []
 
 [dependencies]
 av-core = { path = "../av-core" }
+winncore-monitor = { path = "../winncore-monitor" }
 anyhow = "1"
 thiserror.workspace = true
 tracing = "0.1"

@@ -1,597 +1,336 @@
-# WinnCoreAV
+cat > README.md << 'EOF'
+# WinnCoreAV 🛡️
 
-**ARM64-native Linux Antivirus with Real-time Monitoring & Prometheus Metrics**
+**ARM64-Native Antivirus Research Project** | ML Detection + Behavioral Analysis
 
-[![CI Status](https://github.com/WinnCore/WinnCoreAV/actions/workflows/ci.yml/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
-[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-ARM64%20Linux-orange.svg)]()
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-ARM64-green.svg)]()
+[![Status](https://img.shields.io/badge/status-research%20prototype-yellow.svg)]()
 
----
+> Research prototype exploring ARM64-native antivirus detection using machine learning, behavioral analysis, and signature matching. Built to learn modern security engineering and explore the underserved ARM64 security ecosystem.
 
-## What's New in v0.1.1
-
-### Major Features Added
-- Prometheus Metrics Integration  
-  - Real-time monitoring endpoint at `http://localhost:9090/metrics`  
-  - Track scans, threats, performance, and system resources  
-  - Production-ready observability
-
-- Enhanced CI/CD Pipeline  
-  - 11 comprehensive CI checks  
-  - License compliance validation  
-  - Multi-architecture support (ARM64 + x86_64)
-
-- License Compliance  
-  - Workspace-level MIT OR Apache-2.0 licensing  
-  - Full cargo-deny integration  
-  - All dependencies approved and validated
-
-- Code Quality Improvements  
-  - Auto-formatted with rustfmt  
-  - Clippy warnings resolved  
-  - Merge conflicts cleaned up  
-  - Removed unused dependencies (lazy_static, tiny_http)
+**⚠️ Project Status: Research Prototype**  
+This is a learning project demonstrating AV/EDR concepts, not production security software. Detection rates and performance claims are based on limited test datasets.
 
 ---
 
-## Prometheus Metrics
+## 🎯 What This Actually Is
 
-WinnCoreAV exposes metrics for monitoring.
+**Implemented:**
+- ✅ Multi-layer detection architecture (heuristics → ML → signatures → IoC)
+- ✅ LightGBM-based ML classifier (14 features, ONNX runtime)
+- ✅ ARM64 ELF binary feature extraction
+- ✅ YARA-X signature matching integration (basic)
+- ✅ Structured JSON logging with MITRE ATT&CK tags
+- ✅ Configuration governance via TOML
+- ✅ Model management with checksums and manifests
+- ✅ Basic explainable AI (feature importance)
 
-### Available Metrics
+**Planned/In Progress:**
+- 🚧 eBPF behavioral monitoring (framework present, limited detections)
+- 🚧 Real-time file monitoring with fanotify
+- 🚧 Comprehensive threat intelligence feeds
+- 🚧 Advanced explainable AI (SHAP/LIME)
+- 🚧 Production-scale testing and hardening
+- 🚧 Full CLI interface for operators
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `av_scans_total` | Counter | Total number of scans performed |
-| `av_threats_detected_total` | Counter | Total threats detected and quarantined |
-| `av_scan_duration_seconds` | Histogram | Time taken for each scan operation |
-| `av_files_scanned_total` | Counter | Total files scanned |
-| `av_quarantine_size_bytes` | Gauge | Current size of quarantine directory |
-| `av_worker_threads` | Gauge | Number of active worker threads |
-| `av_memory_usage_bytes` | Gauge | Current memory usage |
+**Not Yet Implemented:**
+- ❌ Production-grade detection rates (limited training data)
+- ❌ Enterprise-scale performance testing
+- ❌ Advanced adversarial robustness
+- ❌ Multi-platform support (ARM64 Linux only)
+- ❌ Real-world deployment validation
 
-### Accessing Metrics
-```bash
-# Start the daemon
-cargo run --release --bin av-daemon
+---
 
-# Query metrics (in another terminal)
-curl http://127.0.0.1:9090/metrics
-````
+## 💡 Why This Project Exists
 
-### Integration with Prometheus
+**Learning Objectives:**
+1. Understand modern AV/EDR architecture (multi-layer defense)
+2. Apply machine learning to security problems
+3. Master ARM64 platform and optimization opportunities
+4. Build production-quality Rust systems software
+5. Explore security engineering career opportunities
 
-```yaml
-scrape_configs:
-  - job_name: 'winncore-av'
-    static_configs:
-      - targets: ['localhost:9090']
+**Market Gap Being Explored:**
+- ARM64 processors dominate mobile, IoT, and increasingly enterprise (Apple Silicon, AWS Graviton)
+- Most antivirus software lacks ARM64-native optimization
+- Open-source security tools lag commercial offerings by 5-10 years in ML adoption
+- Opportunity to build modern, ARM-optimized security tools
+
+---
+
+## 🏗️ Architecture
+```
+┌─────────────────────────────────────────────────┐
+│              File Scan Request                  │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│    Allowlist Check (paths, SHA256 hashes)       │
+│              → Early Allow                      │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│         Heuristic Detection                     │
+│    • EICAR signature                            │
+│    • ELF header validation                      │
+│    • Basic static analysis                      │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│         ML Classification (ONNX)                │
+│    • Extract 14 binary features                 │
+│    • LightGBM inference                         │
+│    • Feature importance (basic XAI)             │
+│    • Score: 0.0 (benign) → 1.0 (malicious)      │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│         Signature Matching (YARA-X)             │
+│    • Pattern-based detection                    │
+│    • Community rule support                     │
+│    • (Basic integration)                        │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│         IoC Lookup                              │
+│    • Hash-based threat intel                    │
+│    • Known-bad indicator matching               │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│         Decision & Logging                      │
+│    • Apply thresholds                           │
+│    • Tag with MITRE ATT&CK techniques           │
+│    • Structured JSON output                     │
+│    • Action: Allow / Quarantine / Neutral       │
+└─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Architecture
+## 📊 Performance & Detection (Caveats)
 
-```
-WinnCoreAV/
-├── av-core/          # Core scanning engine with YARA integration
-├── av-cli/           # Command-line interface
-├── av-daemon/        # Background daemon with metrics server
-├── av-signatures/    # Signature management
-├── av-quarantine/    # Quarantine management
-└── .github/
-    └── workflows/    # CI/CD pipelines
-```
+**Lab Benchmarks (Single-threaded, small dataset):**
+- CPU: <5% idle on Snapdragon X Elite
+- Memory: ~4-5MB footprint
+- SHA-512: 400+ MB/s throughput
+- Scan time: ~26ms average per file
 
----
+**Detection Performance (Limited test set):**
+- Training: 2,631 synthetic + real samples
+- Test: 700 malware + 50 benign samples
+- **"100% detection"*** on this narrow test set
 
-## Installation
+**⚠️ Reality Check:**
+- Small dataset (not production-scale)
+- Likely overfit to test samples
+- Synthetic malware generation is basic augmentation, not adversarial training
+- No real-world deployment validation
+- ARM64-specific malware is rare, limiting testing
 
-## 🎯 Detection Performance
-
-**Real-World Testing Results** (November 2025)
-
-![WinnCoreAV Demo](demo.gif)
-
-### Test Corpus
-- **700 ARM64 Linux malware samples** (Backdoors, Botnets, Cryptominers, Ransomware)
-- **50 benign system binaries** (Ubuntu/Kali userland tools)
-- **Test Environment**: Qualcomm Snapdragon X Elite (ARM64), Ubuntu 24.04
-
-### Results Summary
-
-| Metric | Result |
-|--------|--------|
-| **Malware Detection Rate** | **700/700 (100.0%)** ✅ |
-| **False Positive Rate** | **0/50 (0.0%)** ✅ |
-| **Average Scan Time** | **26ms per file** |
-| **Memory Usage** | **32MB peak** |
-| **CPU Usage** | **<5% average** |
-
-### Detection Breakdown by Malware Family
-
-| Family | Samples | Detected | Rate |
-|--------|---------|----------|------|
-| Backdoors | 200 | 200 | 100% |
-| Botnets (Mirai, Gafgyt) | 200 | 200 | 100% |
-| Cryptominers | 100 | 100 | 100% |
-| Ransomware | 100 | 100 | 100% |
-| Rootkits | 50 | 50 | 100% |
-| Data Stealers | 50 | 50 | 100% |
-
-### ML Model Performance
-
-- **Architecture**: LightGBM ensemble (3 models)
-- **Training Dataset**: 2,631 samples (1,931 benign, 700 malware)
-- **Features**: 14 static binary features (ELF headers, imports, entropy)
-- **Confidence Score**: 95%+ on malware, <1% on benign
-- **Model Size**: 187KB (ONNX format)
-
-### Comparison with Commercial AVs
-
-*Note: Comparative testing against commercial solutions pending. WinnCoreAV specifically targets ARM64 Linux workloads, an underserved segment where most commercial AVs have limited detection capabilities.*
-
-### Video Demonstrations
-
-- **Full Demo**: [demo_video.cast](demo_video.cast) (view with `asciinema play demo_video.cast`)
-- **Quick Preview**: [demo.gif](demo.gif)
+**What this demonstrates:** Understanding of AV architecture and ML fundamentals, not production-ready detection.
 
 ---
 
-## 🧪 Reproduce These Results
-```bash
-# Clone and build
-git clone https://github.com/WinnCore/WinnCoreAV.git
-cd WinnCoreAV
-cargo build --release
+## 🧪 Technical Implementation
 
-# Test on your own malware samples
-./target/release/av-cli scan file /path/to/sample
+### ML Pipeline
+```python
+# Feature extraction (Rust) → Training (Python) → ONNX export
 
-# Run full test suite (requires malware corpus)
-cd ~/malware-research
-./test_real_malware.sh
+# 14 Features extracted from ARM64 ELF:
+- file_size, entropy, entry_point
+- num_sections, num_segments
+- text_size, data_size, rodata_size, bss_size
+- num_dynsym, num_symtab
+- is_stripped, is_pie
+- suspicious_strings
+
+# Model: LightGBM → ONNX Runtime
+# Governance: Checksums, manifests, version control
 ```
 
+### Rust Components
+```rust
+// av-core: Core scanning engine
+pub fn scan_file(path: &Path, config: &ScannerConfig) 
+    -> Result<ScanOutcome>;
 
-### Prerequisites
+// av-ml-detector: ML inference
+pub fn predict(&self, features: &[f32]) 
+    -> Result<MlDetection>;
 
-* Platform: ARM64 Linux (tested on Snapdragon X Elite)
-* Rust: 1.70+ (install from [https://rustup.rs](https://rustup.rs))
-* YARA: 4.x+ (for signature scanning)
-
-### Quick Install
-
-```bash
-git clone https://github.com/WinnCore/WinnCoreAV.git
-cd WinnCoreAV
-
-cargo build --release --all
-
-sudo cp target/release/av-cli /usr/local/bin/
-sudo cp target/release/av-daemon /usr/local/bin/
-
-av-cli --version
+// av-cli: Operator interface (minimal)
+av-cli model verify --model ./models/model.onnx
+av-cli model test --model ./models/model.onnx --input sample.bin
 ```
 
----
-
-## Usage
-
-### Command Line Interface
-
-```bash
-# Scan a single file
-av-cli scan /path/to/file
-
-# Scan a directory recursively
-av-cli scan /path/to/directory
-
-# Scan with verbose output
-av-cli scan /home/user/Downloads --verbose
-
-# List quarantined files
-av-cli quarantine list
-
-# Restore a quarantined file
-av-cli quarantine restore <file-id>
-```
-
-### Daemon Mode
-
-```bash
-# Start the background daemon
-av-daemon
-
-# Features:
-# - Real-time file monitoring
-# - Automatic threat quarantine
-# - Prometheus metrics on :9090
-# - Desktop notifications
-
-# Stop the daemon
-pkill av-daemon
-```
-
----
-
-## Security Features
-
-### Implemented
-
-* YARA-based Signature Scanning
-
-  * Fast pattern matching
-  * Custom signature support
-  * Regular signature updates
-
-* Real-time File Monitoring
-
-  * Watches Downloads, Desktop, Documents
-  * Automatic scanning on file creation/modification
-  * Configurable exclusion patterns
-
-* Automatic Quarantine
-
-  * Isolates detected threats
-  * Preserves file metadata
-  * Safe restoration capability
-
-### Planned
-
-* Heuristic analysis
-* Cloud-based threat intelligence
-* Scheduled scanning
-* Email scanning
-* Web traffic inspection
-
----
-
-## Testing
-
-```bash
-# Unit tests
-cargo test --all
-
-# Integration tests
-cargo test --test '*'
-```
-
-### CI/CD Status
-
-All checks must pass before merging:
-
-* Code formatting (rustfmt)
-* Linting (clippy)
-* Build (ARM64 + x86_64)
-* Unit tests
-* License compliance
-* Security advisories
-* Metrics integration test
-
----
-
-## License
-
-This project is dual-licensed under:
-
-* MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
-* Apache License 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
-
-You may choose either license.
-
-### Dependency Licenses
-
-Permissive licenses only:
-
-* MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause
-* ISC, Unicode-3.0, CC0-1.0, MPL-2.0
-
-See [deny.toml](deny.toml) for complete license policy.
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes
-4. Run tests: `cargo test --all`
-5. Format code: `cargo fmt --all`
-6. Check lints: `cargo clippy --all-targets`
-7. Open a pull request
-
-All contributions must pass CI.
-
----
-
-## Configuration
-
-Create `~/.config/winncore-av/config.toml`:
-
+### Configuration
 ```toml
-[monitoring]
-watch_paths = [
-    "~/Downloads",
-    "~/Desktop",
-    "~/Documents"
-]
-
-exclude_patterns = [
-    "**/node_modules/**",
-    "**/.git/**",
-    "**/target/**"
-]
-
-[quarantine]
-path = "~/.local/share/winncore-av/quarantine"
-auto_quarantine = true
-
-[notifications]
+# scanner.toml - Single governance file
+[ml]
 enabled = true
-desktop_notifications = true
+threshold_malicious = 0.7
+threshold_suspicious = 0.5
 
-[metrics]
-enabled = true
-port = 9090
-host = "127.0.0.1"
+[threat_intel]
+yara_rules_dir = "threat_intel/yara_rules"
+ioc_cache_path = "threat_intel/cache/iocs.json"
 
-[scanning]
-worker_threads = 8
-max_file_size = "100MB"
+[logging]
+json_enabled = true
+mitre_tagging = true
 ```
 
 ---
 
-## Performance
+## 🧠 What I Learned
 
-Tested on Snapdragon X Elite (ARM64):
+**Security Engineering:**
+- Multi-layer defense architecture (defense in depth)
+- MITRE ATT&CK framework for threat modeling
+- Threat intelligence integration patterns
+- Detection engineering vs. signature-based AV
 
-| Operation               | Performance        |
-| ----------------------- | ------------------ |
-| Build Time (release)    | ~30 seconds        |
-| Startup Time            | <1 second          |
-| Scan Rate               | ~1000 files/second |
-| Memory Usage (idle)     | ~50MB              |
-| Memory Usage (scanning) | ~200MB             |
-| Metrics Overhead        | <1% CPU            |
+**Machine Learning:**
+- Feature engineering for binary malware detection
+- Model governance (versioning, checksums, manifests)
+- Basic explainable AI (feature importance)
+- Understanding of adversarial ML challenges (even if not fully solved)
 
----
+**Systems Programming:**
+- High-performance Rust for security applications
+- ONNX runtime integration
+- ARM64 binary analysis (ELF parsing)
+- Structured logging and observability
 
-## Known Issues
-
-* ARM64 cross-compilation in CI disabled (native builds only)
-* Clippy warnings allowed temporarily (non-blocking)
-* Metrics server single-threaded
-
----
-
-## Documentation
-
-* API Documentation: `cargo doc --open`
-* User Guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
-* Developer Guide: [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)
-* Metrics Guide: [docs/METRICS.md](docs/METRICS.md)
+**Platform Expertise:**
+- ARM64 architecture and optimization opportunities
+- NEON SIMD and crypto acceleration
+- Cross-platform challenges
 
 ---
 
-## Acknowledgments
+## 🛠️ Development Approach
 
-* YARA — pattern matching
-* Tokio — async runtime
-* Prometheus — metrics
-* notify — file watching
-* clap — CLI parsing
+**Built by [WinnCore](https://github.com/WinnCore)** | AI-Accelerated Development
 
----
+This project demonstrates modern software engineering:
+- **Architecture & Design:** Human-driven technical decisions, research, planning
+- **Implementation:** AI-assisted code generation (Claude, Codex)
+- **Testing & Validation:** Comprehensive human-verified test suites
+- **Learning:** Deep dive into ARM64, ML, security, and Rust
 
-## Support
+**Philosophy:** Use AI as a force multiplier while maintaining deep understanding and ownership of the codebase. Every line of AI-generated code is reviewed, tested, and integrated thoughtfully.
 
-* Issues: [https://github.com/WinnCore/WinnCoreAV/issues](https://github.com/WinnCore/WinnCoreAV/issues)
-* Discussions: [https://github.com/WinnCore/WinnCoreAV/discussions](https://github.com/WinnCore/WinnCoreAV/discussions)
-* Security: report via GitHub Security Advisories
-
----
-
-## Roadmap
-
-### v0.2.0 (Next Release)
-
-* Web dashboard for metrics
-* Signature auto-update service
-* Scheduled scanning
-* Email integration
-
-### v0.3.0 (Future)
-
-* Machine learning heuristics
-* Cloud threat intelligence
-* Multi-platform support (x86_64)
-* Plugin system
-
-````
-# 🎯 ML Detection Demo
-
-## Performance Metrics
-```
-Model:              LightGBM Gradient Boosting
-Training Samples:   3,821 (1,931 benign + 1,890 malware)
-ROC-AUC Score:      1.0 (Perfect)
-Detection Rate:     100%
-False Positive:     0.41%
-Model Size:         395KB
-Inference Speed:    <100ms per file
-Memory Footprint:   4.4MB
-```
-
-## Live Demo
-
-<details>
-<summary>🎬 Click to view terminal recording</summary>
-
-![Demo](demo.gif)
-
-*Recording shows real-time detection of benign files and synthetic malware on ARM64*
-</details>
-
-## Test Results
-
-### ✅ Benign Files (Should Score < 0.3)
-```bash
-$ cargo run --example test_ml --release -- /usr/bin/ls
-Loading model: models/gbm_v3_hardened.onnx
-Scanning: /usr/bin/ls
-
-📊 ML Detection Result:
-  Score: 0.0392
-  Malicious: false
-  Confidence: Low
-```
-```bash
-$ cargo run --example test_ml --release -- /usr/bin/python3
-Loading model: models/gbm_v3_hardened.onnx
-Scanning: /usr/bin/python3
-
-📊 ML Detection Result:
-  Score: 0.0481
-  Malicious: false
-  Confidence: Low
-```
-
-### 🦠 Malware Samples (Should Score > 0.7)
-```bash
-$ cargo run --example test_ml --release -- synthetic-malware/samples_level3_evasive/low_entropy_1
-Loading model: models/gbm_v3_hardened.onnx
-Scanning: synthetic-malware/samples_level3_evasive/low_entropy_1
-
-📊 ML Detection Result:
-  Score: 0.9761
-  Malicious: true
-  Confidence: High
-```
-
-## Feature Extraction
-
-WinnCoreAV extracts 26 ARM64-specific features for ML classification:
-
-| Category | Features |
-|----------|----------|
-| **File Metadata** | File size, entropy, entry point |
-| **Binary Structure** | Section count, segment count, symbol tables |
-| **Code Analysis** | .text/.data/.rodata/.bss sizes, instruction patterns |
-| **Security Flags** | W^X violations, executable stack, PIE/PIC |
-| **Behavioral Indicators** | Suspicious strings, obfuscation patterns |
-
-### Example Feature Vector
-```
-File: /usr/bin/ls (Benign)
-├─ File Size: 142,144 bytes
-├─ Entropy: 5.87 (normal)
-├─ Sections: 28
-├─ .text Size: 85,504 bytes
-├─ Dynamic Symbols: 156
-├─ W^X Violations: 0
-├─ Suspicious Strings: 0
-└─ Classification: Benign (Score: 0.039)
-
-File: low_entropy_1 (Malware)
-├─ File Size: 524,288 bytes
-├─ Entropy: 7.92 (high - packed/encrypted)
-├─ Sections: 4
-├─ .text Size: 500,000 bytes
-├─ Dynamic Symbols: 2
-├─ W^X Violations: 1
-├─ Suspicious Strings: 15
-└─ Classification: Malicious (Score: 0.976)
-```
-
-## Training Pipeline
-```bash
-# 1. Generate synthetic malware
-python3 generate_synthetic_malware.py --count 1000 --level 3
-
-# 2. Extract features
-python3 extract_features.py
-# Output: features.csv (3,821 samples)
-
-# 3. Train model
-python3 train_model.py
-# Output: models/gbm_v3_hardened.onnx (395KB)
-
-# 4. Deploy to WinnCoreAV
-cp models/gbm_v3_hardened.onnx ../WinnCoreAV/models/
-
-# 5. Test detection
-cargo run --example test_ml --release -- /usr/bin/ls
-```
-
-## Performance Benchmarks
-```
-Platform: ARM64 (Qualcomm Snapdragon X Elite)
-CPU: 12 cores @ 3.4GHz
-Memory: 16GB LPDDR5
-
-Detection Speed:
-├─ Single file:     78ms avg
-├─ Throughput:      12.8 files/second
-├─ Memory usage:    4.4MB baseline
-└─ CPU usage:       <5% per scan
-
-Accuracy:
-├─ Benign (1,931 samples):   100% correct (8 false positives)
-├─ Malware (1,890 samples):  100% detected
-└─ Overall accuracy:         99.79%
-```
-
-## Quick Start
-```bash
-# Clone repository
-git clone https://github.com/WinnCore/WinnCoreAV
-cd WinnCoreAV
-
-# Build
-cargo build --release
-
-# Test ML detection
-cargo run --example test_ml --release -- /path/to/file
-
-# Run full demo
-./record_demo.sh
-```
-
-## Architecture
-```
-┌─────────────────────────────────────────────┐
-│          WinnCoreAV Architecture            │
-├─────────────────────────────────────────────┤
-│                                             │
-│  File Monitor (fanotify/inotify)           │
-│         ↓                                   │
-│  Feature Extractor (26 ARM64 features)     │
-│         ↓                                   │
-│  ML Classifier (LightGBM + ONNX)           │
-│         ↓                                   │
-│  Decision Engine                            │
-│         ↓                                   │
-│  ┌─────────┬─────────┐                     │
-│  │ Quarantine │ Alert  │                    │
-│  └─────────┴─────────┘                     │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-## Citation
-
-If you use WinnCoreAV in your research, please cite:
-```bibtex
-@software{winncore2024,
-  title = {WinnCoreAV: ARM64-Native Malware Detection with Machine Learning},
-  author = {Zachary Winn},
-  year = {2024},
-  url = {https://github.com/WinnCore/WinnCoreAV}
-}
-```
+**Why this matters:** Effective use of AI tools is itself a valuable skill. This project shows:
+1. Ability to architect complex systems
+2. Skill in directing AI to implement specifications
+3. Rigorous testing and validation
+4. Technical depth in security, ML, and systems programming
 
 ---
 
+## 📚 Documentation
+
+- [ML Engineering Guide](docs/ML_ENGINEERING.md) - Architecture, features, models
+- [Threat Intel Integration](docs/THREAT_INTEL.md) - YARA, IoC patterns
+- [Adversarial Toolkit](tools/adversarial/README.md) - Basic augmentation
+
+---
+
+## 🛣️ Roadmap
+
+**Phase 4 (Current): Advanced Detection**
+- [ ] Complete scan-dir CLI command
+- [ ] ARM64 hardware security monitoring (PAC, BTI)
+- [ ] Enhanced explainable AI (SHAP/LIME)
+- [ ] Living-off-the-land binary detection
+- [ ] Comprehensive stress testing
+
+**Phase 5: Production Hardening**
+- [ ] Larger, more diverse training dataset
+- [ ] Real-world malware validation
+- [ ] Performance optimization at scale
+- [ ] Advanced adversarial robustness
+- [ ] 24hr+ stability testing
+
+**Future Vision:**
+- Federated learning for privacy-preserving threat sharing
+- Multi-platform support (Windows, macOS)
+- Container/Kubernetes security integration
+- Advanced behavioral analysis with eBPF
+
+---
+
+## 🎓 Educational Value
+
+**For Employers/Clients:**
+
+This project demonstrates:
+1. **Security Fundamentals:** Understanding of modern AV/EDR architecture
+2. **ML Engineering:** Feature engineering, model governance, XAI concepts
+3. **Systems Programming:** High-performance Rust, async/concurrent design
+4. **Platform Expertise:** ARM64 architecture and optimization
+5. **Modern Development:** Effective AI tool usage + rigorous validation
+6. **Honest Communication:** Accurate technical assessment of capabilities and limitations
+
+**Skill Level Assessment:**
+- Intermediate-to-advanced in **concept and architecture** ✅
+- Early-stage in **production implementation and scale** 🚧
+- Strong **learning velocity and technical curiosity** 🚀
+
+This is a portfolio piece showing **potential and learning ability**, not a finished commercial product.
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! This is a learning project, so:
+- Don't expect production-grade code review turnaround
+- Focus on educational value over production features
+- Help improve documentation and accuracy
+
+Areas needing improvement:
+- Larger, more diverse training datasets
+- Real ARM64 malware samples for testing
+- Advanced adversarial ML techniques
+- Production-scale performance testing
+- Better eBPF integration
+
+---
+
+## 📄 License
+
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- YARA-X project for ARM64-native signature matching
+- MITRE ATT&CK framework for threat taxonomy
+- Rust community for excellent tooling and libraries
+- Anthropic Claude & OpenAI Codex for development acceleration
+- Security research community for public knowledge sharing
+
+---
+
+**Built by [WinnCore](https://github.com/WinnCore) 🚀**
+
+_Exploring ARM64 security through hands-on learning - architected by humans, accelerated by AI._
+
+**Status:** Research prototype demonstrating AV/EDR concepts  
+**Goal:** Learn modern security engineering while building something genuinely useful  
+**Honesty:** This is a learning project, not production software (yet)
+EOF
 **[← Back to Main README](README.md)** | **[View Full Documentation →](docs/)**

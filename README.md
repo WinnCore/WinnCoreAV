@@ -2,26 +2,22 @@
 
 ## 🎥 Investor Demo
 
-Watch our comprehensive investor presentation showcasing WinnCoreAV's architecture, performance benchmarks, and business model.
+![Demo Preview](assets/demo_preview.gif)
 
-**[📁 View Demo Files](https://github.com/WinnCore/WinnCoreAV/tree/main/demos)**
+*30-second preview - [Run full 5-7 minute demo](demos/investor_demo.sh) or [view recording](demos/investor_demo.cast)*
 
-### Run the Demo
-```bash
-# Run the live presentation
-bash demos/investor_demo.sh
-
-# Or replay the recording
-asciinema play demos/investor_demo.cast
-```
-
-**Demo Contents:**
-- 8 detailed slides covering technical architecture, benchmarks, business model, and roadmap
-- ~5-7 minute presentation
-- 100% honest about current state and capabilities
+**Comprehensive investor presentation** covering:
+- Technical architecture & ARM64 optimization
+- Performance benchmarks (honest comparisons)
+- Business model & revenue projections  
+- Roadmap & what we need to succeed
 - Contact: zw@winncore.com
 
+**[📁 All Demo Files](https://github.com/WinnCore/WinnCoreAV/tree/main/demos)**
+
 ---
+
+
 
 
 **ARM64-Native Malware Detection - Learning Project**

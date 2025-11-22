@@ -1,5 +1,29 @@
 # WinnCoreAV 🛡️
 
+## 🎥 Investor Demo
+
+Watch our comprehensive investor presentation showcasing WinnCoreAV's architecture, performance benchmarks, and business model.
+
+**[📁 View Demo Files](https://github.com/WinnCore/WinnCoreAV/tree/main/demos)**
+
+### Run the Demo
+```bash
+# Run the live presentation
+bash demos/investor_demo.sh
+
+# Or replay the recording
+asciinema play demos/investor_demo.cast
+```
+
+**Demo Contents:**
+- 8 detailed slides covering technical architecture, benchmarks, business model, and roadmap
+- ~5-7 minute presentation
+- 100% honest about current state and capabilities
+- Contact: zw@winncore.com
+
+---
+
+
 **ARM64-Native Malware Detection - Learning Project**
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)

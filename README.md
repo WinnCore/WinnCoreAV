@@ -1,335 +1,148 @@
 # WinnCoreAV 🛡️
 
-**ARM64-Native Antivirus Research Project** | ML Detection + Behavioral Analysis
+**ARM64-Native Malware Detection - Learning Project**
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-ARM64-green.svg)]()
-[![Status](https://img.shields.io/badge/status-research%20prototype-yellow.svg)]()
+[![Status](https://img.shields.io/badge/status-learning%20project-yellow.svg)]()
 
-> Research prototype exploring ARM64-native antivirus detection using machine learning, behavioral analysis, and signature matching. Built to learn modern security engineering and explore the underserved ARM64 security ecosystem.
+> Learning modern AV/EDR concepts by building an ARM64-native malware detector with machine learning.
 
-**⚠️ Project Status: Research Prototype**  
-This is a learning project demonstrating AV/EDR concepts, not production security software. Detection rates and performance claims are based on limited test datasets.
+## What's Actually Implemented
 
----
+### ✅ Complete: ML Detection Pipeline
+- **Feature extraction** from ARM64 ELF binaries (14 features)
+- **LightGBM model** trained on 2,631 samples → ONNX runtime
+- **Model governance**: checksums, manifests, version control
+- **Basic XAI**: feature importance attribution
+- **CLI tools**: model verify, model test
+- Clean, modular Rust code in `av-ml-detector` crate
 
-## 🎯 What This Actually Is
+**This part works well** and demonstrates ML engineering fundamentals.
 
-**Implemented:**
-- ✅ Multi-layer detection architecture (heuristics → ML → signatures → IoC)
-- ✅ LightGBM-based ML classifier (14 features, ONNX runtime)
-- ✅ ARM64 ELF binary feature extraction
-- ✅ YARA-X signature matching integration (basic)
-- ✅ Structured JSON logging with MITRE ATT&CK tags
-- ✅ Configuration governance via TOML
-- ✅ Model management with checksums and manifests
-- ✅ Basic explainable AI (feature importance)
+### 🚧 Partial: Core Scanning Engine
+- Basic scanning pipeline structure exists (`av-core`)
+- YARA-X integration is **stubbed** (loads rules, but limited actual scanning)
+- IoC cache is **basic** (hash lookup structure, minimal testing)
+- eBPF monitoring is **framework only** (not production detections)
+- Configuration system works (TOML governance)
 
-**Planned/In Progress:**
-- 🚧 eBPF behavioral monitoring (framework present, limited detections)
-- 🚧 Real-time file monitoring with fanotify
-- 🚧 Comprehensive threat intelligence feeds
-- 🚧 Advanced explainable AI (SHAP/LIME)
-- 🚧 Production-scale testing and hardening
-- 🚧 Full CLI interface for operators
+**This shows architectural understanding** but needs more implementation work.
 
-**Not Yet Implemented:**
-- ❌ Production-grade detection rates (limited training data)
-- ❌ Enterprise-scale performance testing
-- ❌ Advanced adversarial robustness
-- ❌ Multi-platform support (ARM64 Linux only)
-- ❌ Real-world deployment validation
+### ❌ Not Yet: Production Features
+- Real-time file monitoring
+- Behavioral detection patterns
+- Comprehensive threat intelligence feeds
+- Full operator CLI (`scan-dir` command)
+- Real-world malware validation
+- Enterprise-scale testing
 
----
+## Why This Project Exists
 
-## 💡 Why This Project Exists
+**Learning objectives:**
+1. Understand ML-based malware detection
+2. Learn Rust systems programming
+3. Explore ARM64 platform opportunities
+4. Build portfolio demonstrating potential
 
-**Learning Objectives:**
-1. Understand modern AV/EDR architecture (multi-layer defense)
-2. Apply machine learning to security problems
-3. Master ARM64 platform and optimization opportunities
-4. Build production-quality Rust systems software
-5. Explore security engineering career opportunities
+**Market context:**
+- ARM64 lacks native security tooling
+- Open-source AV lags commercial offerings
+- Good learning opportunity in underserved niche
 
-**Market Gap Being Explored:**
-- ARM64 processors dominate mobile, IoT, and increasingly enterprise (Apple Silicon, AWS Graviton)
-- Most antivirus software lacks ARM64-native optimization
-- Open-source security tools lag commercial offerings by 5-10 years in ML adoption
-- Opportunity to build modern, ARM-optimized security tools
+## What This Demonstrates
 
----
-
-## 🏗️ Architecture
-```
-┌─────────────────────────────────────────────────┐
-│              File Scan Request                  │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│    Allowlist Check (paths, SHA256 hashes)       │
-│              → Early Allow                      │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│         Heuristic Detection                     │
-│    • EICAR signature                            │
-│    • ELF header validation                      │
-│    • Basic static analysis                      │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│         ML Classification (ONNX)                │
-│    • Extract 14 binary features                 │
-│    • LightGBM inference                         │
-│    • Feature importance (basic XAI)             │
-│    • Score: 0.0 (benign) → 1.0 (malicious)      │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│         Signature Matching (YARA-X)             │
-│    • Pattern-based detection                    │
-│    • Community rule support                     │
-│    • (Basic integration)                        │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│         IoC Lookup                              │
-│    • Hash-based threat intel                    │
-│    • Known-bad indicator matching               │
-└────────────────┬────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────┐
-│         Decision & Logging                      │
-│    • Apply thresholds                           │
-│    • Tag with MITRE ATT&CK techniques           │
-│    • Structured JSON output                     │
-│    • Action: Allow / Quarantine / Neutral       │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## 📊 Performance & Detection (Caveats)
-
-**Lab Benchmarks (Single-threaded, small dataset):**
-- CPU: <5% idle on Snapdragon X Elite
-- Memory: ~4-5MB footprint
-- SHA-512: 400+ MB/s throughput
-- Scan time: ~26ms average per file
-
-**Detection Performance (Limited test set):**
-- Training: 2,631 synthetic + real samples
-- Test: 700 malware + 50 benign samples
-- **"100% detection"*** on this narrow test set
-
-**⚠️ Reality Check:**
-- Small dataset (not production-scale)
-- Likely overfit to test samples
-- Synthetic malware generation is basic augmentation, not adversarial training
-- No real-world deployment validation
-- ARM64-specific malware is rare, limiting testing
-
-**What this demonstrates:** Understanding of AV architecture and ML fundamentals, not production-ready detection.
-
----
-
-## 🧪 Technical Implementation
-
-### ML Pipeline
-```python
-# Feature extraction (Rust) → Training (Python) → ONNX export
-
-# 14 Features extracted from ARM64 ELF:
-- file_size, entropy, entry_point
-- num_sections, num_segments
-- text_size, data_size, rodata_size, bss_size
-- num_dynsym, num_symtab
-- is_stripped, is_pie
-- suspicious_strings
-
-# Model: LightGBM → ONNX Runtime
-# Governance: Checksums, manifests, version control
-```
-
-### Rust Components
-```rust
-// av-core: Core scanning engine
-pub fn scan_file(path: &Path, config: &ScannerConfig) 
-    -> Result<ScanOutcome>;
-
-// av-ml-detector: ML inference
-pub fn predict(&self, features: &[f32]) 
-    -> Result<MlDetection>;
-
-// av-cli: Operator interface (minimal)
-av-cli model verify --model ./models/model.onnx
-av-cli model test --model ./models/model.onnx --input sample.bin
-```
-
-### Configuration
-```toml
-# scanner.toml - Single governance file
-[ml]
-enabled = true
-threshold_malicious = 0.7
-threshold_suspicious = 0.5
-
-[threat_intel]
-yara_rules_dir = "threat_intel/yara_rules"
-ioc_cache_path = "threat_intel/cache/iocs.json"
-
-[logging]
-json_enabled = true
-mitre_tagging = true
-```
-
----
-
-## 🧠 What I Learned
-
-**Security Engineering:**
-- Multi-layer defense architecture (defense in depth)
-- MITRE ATT&CK framework for threat modeling
-- Threat intelligence integration patterns
-- Detection engineering vs. signature-based AV
-
-**Machine Learning:**
-- Feature engineering for binary malware detection
-- Model governance (versioning, checksums, manifests)
-- Basic explainable AI (feature importance)
-- Understanding of adversarial ML challenges (even if not fully solved)
-
-**Systems Programming:**
-- High-performance Rust for security applications
-- ONNX runtime integration
+**Technical Skills:**
+- ML pipeline (feature engineering → training → ONNX deployment)
+- Rust systems programming (async, error handling, testing)
 - ARM64 binary analysis (ELF parsing)
-- Structured logging and observability
+- Software architecture (multi-crate workspace, clean APIs)
+- Modern development (AI-assisted coding, comprehensive testing)
 
-**Platform Expertise:**
-- ARM64 architecture and optimization opportunities
-- NEON SIMD and crypto acceleration
-- Cross-platform challenges
+**Honest Self-Assessment:**
+- Strong on **concepts and architecture** ✅
+- Early-stage on **complete implementation** 🚧
+- Learning **quickly with good fundamentals** 🚀
 
----
+## Tech Stack
 
-## 🛠️ Development Approach
+**Core:**
+- Rust (memory-safe, high-performance)
+- ONNX Runtime (ML inference)
+- LightGBM (malware classification)
 
-**Built by [WinnCore](https://github.com/WinnCore)** | AI-Accelerated Development
+**Partial/Planned:**
+- YARA-X (signature matching)
+- eBPF (behavioral monitoring)
+- MITRE ATT&CK (threat taxonomy)
 
-This project demonstrates modern software engineering:
-- **Architecture & Design:** Human-driven technical decisions, research, planning
-- **Implementation:** AI-assisted code generation (Claude, Codex)
-- **Testing & Validation:** Comprehensive human-verified test suites
-- **Learning:** Deep dive into ARM64, ML, security, and Rust
+## Repository Structure
+```
+├── av-ml-detector/    # ✅ Complete: ML inference pipeline
+├── av-core/           # 🚧 Partial: Scanning engine framework  
+├── av-cli/            # 🚧 Partial: Basic CLI (verify/test only)
+├── tools/
+│   └── ml_pipeline/   # ✅ Complete: Training scripts
+├── models/            # ✅ Complete: ONNX models with manifests
+└── docs/              # 🚧 Partial: Architecture documentation
+```
 
-**Philosophy:** Use AI as a force multiplier while maintaining deep understanding and ownership of the codebase. Every line of AI-generated code is reviewed, tested, and integrated thoughtfully.
+## Development Approach
 
-**Why this matters:** Effective use of AI tools is itself a valuable skill. This project shows:
-1. Ability to architect complex systems
-2. Skill in directing AI to implement specifications
-3. Rigorous testing and validation
-4. Technical depth in security, ML, and systems programming
+**Built by WinnCore** with AI-accelerated development (Claude/Codex).
 
----
+- **Human:** Architecture, design, research, testing, validation
+- **AI:** Code generation, boilerplate, test scaffolding
+- **Result:** Fast learning while maintaining code understanding
 
-## 📚 Documentation
+Using AI tools effectively is itself a valuable skill.
 
-- [ML Engineering Guide](docs/ML_ENGINEERING.md) - Architecture, features, models
-- [Threat Intel Integration](docs/THREAT_INTEL.md) - YARA, IoC patterns
-- [Adversarial Toolkit](tools/adversarial/README.md) - Basic augmentation
+## Current Limitations
 
----
+Be honest about what this is:
+- **Small dataset** (2,631 training samples)
+- **Likely overfit** to test set (need more diverse data)
+- **Partial implementation** (ML works, rest is framework)
+- **Not production-ready** (learning project, not deployment)
+- **ARM64 Linux only** (no multi-platform support yet)
 
-## 🛣️ Roadmap
+## What's Next
 
-**Phase 4 (Current): Advanced Detection**
-- [ ] Complete scan-dir CLI command
-- [ ] ARM64 hardware security monitoring (PAC, BTI)
-- [ ] Enhanced explainable AI (SHAP/LIME)
-- [ ] Living-off-the-land binary detection
-- [ ] Comprehensive stress testing
+**Immediate priorities:**
+1. Complete `scan-dir` CLI command
+2. Finish YARA integration (actual scanning, not just loading)
+3. Add real behavioral detection patterns
+4. Expand dataset with diverse samples
+5. Comprehensive testing and validation
 
-**Phase 5: Production Hardening**
-- [ ] Larger, more diverse training dataset
-- [ ] Real-world malware validation
-- [ ] Performance optimization at scale
-- [ ] Advanced adversarial robustness
-- [ ] 24hr+ stability testing
+**Long-term vision:**
+- Real-world malware validation
+- Production-grade performance
+- Advanced XAI (SHAP/LIME)
+- Multi-platform support
 
-**Future Vision:**
-- Federated learning for privacy-preserving threat sharing
-- Multi-platform support (Windows, macOS)
-- Container/Kubernetes security integration
-- Advanced behavioral analysis with eBPF
+## For Employers/Recruiters
 
----
+This project shows:
+- **Learning ability** - picked up security, ML, Rust quickly
+- **Architectural thinking** - understands modern AV/EDR concepts
+- **Clean code** - modular, tested, documented
+- **Honest communication** - accurate self-assessment
+- **Modern tooling** - effective use of AI for acceleration
 
-## 🎓 Educational Value
+It's a **portfolio piece demonstrating potential**, not a finished product.
 
-**For Employers/Clients:**
+## Documentation
 
-This project demonstrates:
-1. **Security Fundamentals:** Understanding of modern AV/EDR architecture
-2. **ML Engineering:** Feature engineering, model governance, XAI concepts
-3. **Systems Programming:** High-performance Rust, async/concurrent design
-4. **Platform Expertise:** ARM64 architecture and optimization
-5. **Modern Development:** Effective AI tool usage + rigorous validation
-6. **Honest Communication:** Accurate technical assessment of capabilities and limitations
+- [ML Pipeline](docs/ML_ENGINEERING.md) - Feature extraction, training, deployment
+- [Architecture](docs/) - System design and component overview
 
-**Skill Level Assessment:**
-- Intermediate-to-advanced in **concept and architecture** ✅
-- Early-stage in **production implementation and scale** 🚧
-- Strong **learning velocity and technical curiosity** 🚀
+## License
 
-This is a portfolio piece showing **potential and learning ability**, not a finished commercial product.
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! This is a learning project, so:
-- Don't expect production-grade code review turnaround
-- Focus on educational value over production features
-- Help improve documentation and accuracy
-
-Areas needing improvement:
-- Larger, more diverse training datasets
-- Real ARM64 malware samples for testing
-- Advanced adversarial ML techniques
-- Production-scale performance testing
-- Better eBPF integration
-
----
-
-## 📄 License
-
-Apache License 2.0 - See [LICENSE](LICENSE) for details.
-
----
-
-## 🙏 Acknowledgments
-
-- YARA-X project for ARM64-native signature matching
-- MITRE ATT&CK framework for threat taxonomy
-- Rust community for excellent tooling and libraries
-- Anthropic Claude & OpenAI Codex for development acceleration
-- Security research community for public knowledge sharing
+Apache 2.0
 
 ---
 
 **Built by [WinnCore](https://github.com/WinnCore) 🚀**
 
-_Exploring ARM64 security through hands-on learning - architected by humans, accelerated by AI._
-
-**Status:** Research prototype demonstrating AV/EDR concepts  
-**Goal:** Learn modern security engineering while building something genuinely useful  
-**Honesty:** This is a learning project, not production software (yet)
-EOF
-**[← Back to Main README](README.md)** | **[View Full Documentation →](docs/)**
+_Learning ARM64 security engineering - honest about current state, excited about future potential_

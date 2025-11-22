@@ -1,4 +1,3 @@
-cat > README.md << 'EOF'
 # WinnCoreAV 🛡️
 
 **ARM64-Native Antivirus Research Project** | ML Detection + Behavioral Analysis

@@ -23,6 +23,8 @@ pub mod heuristics;
 pub mod monitoring;
 pub mod signatures;
 pub mod telemetry;
+pub mod logging;
+pub mod threat_intel;
 
 pub use config::ScannerConfig;
 
@@ -68,6 +70,9 @@ pub struct ScanOutcome {
     pub heuristic_score: heuristics::Score,
     pub entropy: engine::EntropyReport,
     pub recommended_action: RecommendedAction,
+    pub mitre_tags: Vec<String>,
+    pub ioc_hits: Vec<String>,
+    pub yara_matches: Vec<String>,
 }
 
 /// The scanner only *recommends* actions; mutating options are left to

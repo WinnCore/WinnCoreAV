@@ -1,0 +1,23 @@
+enable_ml = true
+ml_threshold = 0.5
+log_json = true
+mitre_tagging = true
+eicar_detection = true
+enable_entropy_analysis = true
+heuristic_threshold = 0.8
+bloom_filter_bits = 262144
+max_scan_depth = 4
+thread_pool_size = 4
+allowlist_hashes = []
+allowlist_paths = []
+
+[threat_intel]
+yara_rules_dir = "tests/fixtures/yara"
+ioc_cache_path = "tests/fixtures/iocs/iocs.json"
+taxii_collection = ""
+taxii_url = ""
+
+[model_updates]
+manifest_url = ""
+public_key_path = "config/model_pubkey.pem"
+model_lock_version = ""

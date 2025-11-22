@@ -3,6 +3,8 @@
 
 use crate::config::ScannerConfig;
 use crate::heuristics::{self};
+use crate::logging::{emit_detection_log, iso_timestamp, sha256_file};
+use crate::threat_intel::{load_ioc_cache, scan_with_yara};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -37,26 +39,124 @@ pub async fn scan_path(
     ctx: &ScanContext,
 ) -> anyhow::Result<crate::ScanOutcome> {
     let data = read_head(&ctx.target).await?;
-    
-    // YARA signatures disabled for ML testing
-    let signatures = Vec::new();
-    
+
+    // Allowlist by path
+    if config
+        .allowlist_paths
+        .iter()
+        .any(|p| p == &ctx.target)
+    {
+        return Ok(crate::ScanOutcome {
+            path: ctx.target.display().to_string(),
+            signatures: Vec::new(),
+            heuristic_score: heuristics::Score(0.0),
+            entropy: EntropyReport::default(),
+            recommended_action: crate::RecommendedAction::Allow,
+            mitre_tags: Vec::new(),
+            ioc_hits: Vec::new(),
+            yara_matches: Vec::new(),
+        });
+    }
+
+    let sha = sha256_file(&ctx.target).ok();
+
+    // Allowlist by hash
+    if let (Some(ref s), true) = (&sha, !config.allowlist_hashes.is_empty()) {
+        if config
+            .allowlist_hashes
+            .iter()
+            .any(|h| h.eq_ignore_ascii_case(s))
+        {
+            return Ok(crate::ScanOutcome {
+                path: ctx.target.display().to_string(),
+                signatures: Vec::new(),
+                heuristic_score: heuristics::Score(0.0),
+                entropy: EntropyReport::default(),
+                recommended_action: crate::RecommendedAction::Allow,
+                mitre_tags: Vec::new(),
+                ioc_hits: Vec::new(),
+                yara_matches: Vec::new(),
+            });
+        }
+    }
+
+    // Threat intel: YARA
+    let yara_verdict = scan_with_yara(&ctx.target, config).unwrap_or_default();
+    let signatures = yara_verdict
+        .matched_rules
+        .iter()
+        .map(|r| crate::engine::SignatureMatch {
+            rule: r.clone(),
+            namespace: "yara".to_string(),
+            metadata: serde_json::json!({ "source": "yara" }),
+        })
+        .collect::<Vec<_>>();
+
     let heuristic_score = heuristics::score(&ctx.target, &data, config);
-    
+
     let entropy = if config.enable_entropy_analysis {
         entropy(&data)
     } else {
         EntropyReport::default()
     };
-    
-    let recommended_action = heuristics::recommend(&signatures, heuristic_score, config);
-    
+
+    let mut recommended_action = heuristics::recommend(&signatures, heuristic_score, config);
+
+    // Detect EICAR test string
+    let mut mitre_tags = Vec::new();
+    if config.eicar_detection && data.windows(EICAR_TEST.len()).any(|w| w == EICAR_TEST) {
+        mitre_tags.push("T1204".to_string()); // User Execution (test mapping)
+        recommended_action = crate::RecommendedAction::Quarantine;
+    }
+
+    // IoC cache
+    let mut ioc_hits = Vec::new();
+    if let Some(cache) = load_ioc_cache(config) {
+        if let Some(ref s) = sha {
+            if cache.sha256.iter().any(|h| h.eq_ignore_ascii_case(s)) {
+                ioc_hits.push(s.clone());
+                recommended_action = crate::RecommendedAction::Quarantine;
+            }
+        }
+    }
+
+    if config.log_json {
+        let notes = if !signatures.is_empty() {
+            vec!["signature_match".to_string()]
+        } else {
+            Vec::new()
+        };
+        let log = crate::logging::DetectionLog {
+            ts: iso_timestamp(),
+            host: crate::logging::host_id(),
+            path: &ctx.target.display().to_string(),
+            sha256: sha.clone(),
+            model_version: Some("gbm_v3_hardened"),
+            model_checksum: None,
+            score: heuristic_score.0,
+            action: match recommended_action {
+                crate::RecommendedAction::Allow => "allow",
+                crate::RecommendedAction::Monitor => "monitor",
+                crate::RecommendedAction::Quarantine => "quarantine",
+            },
+            mitre: &mitre_tags,
+            notes: &notes,
+            yara_matches: &yara_verdict.matched_rules,
+            ioc_hits: &ioc_hits,
+            adversarial_hint: false,
+        };
+        emit_detection_log(&log, true);
+    }
+
     Ok(crate::ScanOutcome {
         path: ctx.target.display().to_string(),
         signatures,
         heuristic_score,
         entropy,
         recommended_action,
+        mitre_tags,
+        ioc_hits,
+        yara_matches: yara_verdict.matched_rules,
     })
 }
 
@@ -70,3 +170,5 @@ async fn read_head(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
 fn entropy(_data: &[u8]) -> EntropyReport {
     EntropyReport::default()
 }
+
+const EICAR_TEST: &[u8] = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";

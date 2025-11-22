@@ -1,4 +1,5 @@
 //! Production monitoring with owned runtime
+pub mod metrics;
 
 use crate::metrics::Metrics;
 use anyhow::Result;

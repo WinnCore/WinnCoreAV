@@ -20,23 +20,23 @@ impl ScanDeduplicator {
             cleanup_duration: Duration::from_millis(cleanup_ms),
         }
     }
-    
+
     pub async fn should_scan(&self, path: &str) -> bool {
         let mut scans = self.recent_scans.write().await;
-        
+
         // Check if we scanned this file in the configured debounce duration
         if let Some(&last_scan) = scans.get(path) {
             if last_scan.elapsed() < self.debounce_duration {
                 return false; // Skip - scanned recently
             }
         }
-        
+
         // Record this scan
         scans.insert(path.to_string(), Instant::now());
-        
+
         // Cleanup old entries (older than cleanup duration)
         scans.retain(|_, &mut time| time.elapsed() < self.cleanup_duration);
-        
+
         true
     }
 }

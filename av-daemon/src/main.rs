@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use av_core::{Scanner, ScannerConfig};
-use notify::{Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{
+    Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
 use std::{
@@ -17,6 +19,8 @@ use tracing::{error, info, warn};
 mod config;
 mod dedup;
 use dedup::ScanDeduplicator;
+#[cfg(feature = "behavior_monitor")]
+mod behavior;
 mod response;
 
 use config::DaemonConfig;
@@ -70,10 +74,8 @@ async fn main() -> Result<()> {
     let scanner = Scanner::new(scanner_config).context("failed to initialize scanner")?;
     info!("✅ Scanner initialized");
 
-    let response_engine = ResponseEngine::new(
-        config.response.enabled,
-        config.thresholds.kill_threshold,
-    );
+    let response_engine =
+        ResponseEngine::new(config.response.enabled, config.thresholds.kill_threshold);
     info!("✅ Response engine initialized");
 
     let dedup = ScanDeduplicator::new(config.monitoring.debounce_ms);
@@ -89,11 +91,10 @@ async fn main() -> Result<()> {
     write_pid_file(&config.daemon.pid_file)?;
     info!("✅ PID file written: {}", config.daemon.pid_file);
 
-    let signals = Signals::new(&[SIGTERM, SIGINT, SIGHUP])?;
+    let signals = Signals::new([SIGTERM, SIGINT, SIGHUP])?;
     let signals_handle = signals.handle();
     let signal_state = state.clone();
-    let mut signals_task =
-        tokio::spawn(async move { handle_signals(signals, signal_state).await });
+    let mut signals_task = tokio::spawn(async move { handle_signals(signals, signal_state).await });
 
     let monitoring_state = state.clone();
     let mut monitoring_task = tokio::spawn(async move {
@@ -155,7 +156,11 @@ async fn monitor_files(state: DaemonState) -> Result<()> {
     for path in &state.config.monitoring.watch_paths {
         let watch_path = Path::new(path);
         if watch_path.exists() {
-            register_watch_path(&mut watcher, watch_path, &state.config.monitoring.ignore_paths);
+            register_watch_path(
+                &mut watcher,
+                watch_path,
+                &state.config.monitoring.ignore_paths,
+            );
         } else {
             warn!("  ⚠️  Path does not exist: {}", watch_path.display());
         }
@@ -316,11 +321,7 @@ fn cleanup(pid_file: &str) -> Result<()> {
     Ok(())
 }
 
-fn register_watch_path(
-    watcher: &mut RecommendedWatcher,
-    root: &Path,
-    ignore_paths: &[String],
-) {
+fn register_watch_path(watcher: &mut RecommendedWatcher, root: &Path, ignore_paths: &[String]) {
     if is_ignored(root, ignore_paths) {
         return;
     }
@@ -328,10 +329,7 @@ fn register_watch_path(
     match watcher.watch(root, RecursiveMode::Recursive) {
         Ok(_) => info!("  ✅ Watching: {}", root.display()),
         Err(err) => {
-            warn!(
-                "  ⚠️  Recursive watch failed for {}: {err}",
-                root.display()
-            );
+            warn!("  ⚠️  Recursive watch failed for {}: {err}", root.display());
 
             if !root.is_dir() {
                 return;
@@ -348,10 +346,7 @@ fn register_watch_path(
                 match watcher.watch(&dir, RecursiveMode::NonRecursive) {
                     Ok(_) => info!("  ✅ Watching directory: {}", dir.display()),
                     Err(e) => {
-                        warn!(
-                            "  ⚠️  Failed to watch directory {}: {e}",
-                            dir.display()
-                        );
+                        warn!("  ⚠️  Failed to watch directory {}: {e}", dir.display());
                         continue;
                     }
                 }

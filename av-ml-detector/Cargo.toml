@@ -20,3 +20,8 @@ goblin = "0.8"
 
 # Feature extraction
 sha2 = "0.10"
+ed25519-dalek = "2.1"
+semver = { version = "1.0", features = ["serde"] }
+
+# Instruction analysis
+capstone = "0.12"

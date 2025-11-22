@@ -5,7 +5,7 @@ members = [
     "av-signatures", 
     "av-daemon",
     "av-cli",
-    "av-quarantine",
+    "av-quarantine", "winncore-monitor",
 ]
 
 [workspace.package]

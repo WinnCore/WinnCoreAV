@@ -1,53 +1,32 @@
 [package]
 name = "av-daemon"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-version.workspace = true
 publish = false
 
 [features]
-default = ["battery_saver"]
-neon_accel = []
-ebpf_probes = []
-landlock_confine = []
-battery_saver = []
+default = []
+behavior_monitor = ["aya"]
 
 [dependencies]
+winncore-monitor = { path = "../winncore-monitor" }
 av-core = { path = "../av-core" }
-anyhow = "1"
-thiserror.workspace = true
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+anyhow.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde.workspace = true
-serde_json = "1"
-tokio = { features = ["full", "macros", "rt-multi-thread"], version = "1" }
-async-trait.workspace = true
-config.workspace = true
-dirs = "5"
-notify = "6"
-parking_lot.workspace = true
-chrono = "0.4"
-reqwest.workspace = true
-ring.workspace = true
-ed25519-dalek.workspace = true
-sha2 = "0.10"
-seccomp = { workspace = true, optional = true }
-landlock = { workspace = true, optional = true }
-crossbeam-channel = "0.5"
-hex = "0.4"
-libc = "0.2"
-num_cpus = "1"
-notify-rust = "4"
-filetime = "0.2"
-globset = "0.4"
-ctrlc = "3"
-lru_time_cache = "0.11"
-glob = "0.3.3"
-prometheus = { version = "0.14.0", features = ["process"] }
-
-[dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"] }
 serde_json.workspace = true
-toml.workspace = true
-tempfile = "3.23.0"
+toml = "0.8"
+notify = "6.1"
+inotify = { version = "0.10", default-features = false }
+signal-hook = "0.3"
+signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
+daemonize = "0.5"
+nix = { version = "0.27", features = ["signal"] }
+config = "0.14"
+tokio-stream = "0.1"
+aya = { version = "0.13", optional = true, features = ["async_tokio"] }
+bytes = "1.10"

@@ -1,0 +1,42 @@
+[daemon]
+pid_file = "/var/run/winncore-av.pid"
+log_file = "/var/log/winncore-av/daemon.log"
+working_dir = "/var/lib/winncore"
+
+[monitoring]
+watch_paths = [
+    "/home",
+    "/tmp",
+    "/opt",
+    "/usr/local/bin",
+    "/var/www"
+]
+ignore_paths = [
+    "/proc",
+    "/sys",
+    "/dev",
+    "/var/lib/winncore"
+]
+scan_on_create = true
+scan_on_modify = true
+scan_on_execute = true
+debounce_ms = 100
+
+[response]
+enabled = true
+auto_kill = true
+auto_quarantine = true
+auto_block_network = false
+
+[thresholds]
+kill_threshold = 0.95
+quarantine_threshold = 0.85
+alert_threshold = 0.70
+
+[limits]
+max_actions_per_minute = 10
+max_scan_queue = 1000
+scan_timeout_seconds = 30
+
+[logging]
+level = "info"

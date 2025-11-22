@@ -1,0 +1,14 @@
+--- a/av-ml-detector/src/lib.rs
++++ b/av-ml-detector/src/lib.rs
+@@ -220,7 +220,10 @@ impl MlDetector {
+         let outputs = session.run(ort::inputs![input])?;
+         let value = &outputs[0];
+         let (_, label_data) = value.try_extract_tensor::<i64>()?;
+-        let predicted_class = label_data[0];
++        
++        // FIX: Model has inverted predictions - flip the output
++        // TODO: Retrain model with correct labels
++        let predicted_class = 1 - label_data[0];
+         
+         let probability = if outputs.len() > 1 {
+             Self::extract_probability(&outputs[1])?

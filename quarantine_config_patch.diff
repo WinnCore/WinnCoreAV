@@ -1,0 +1,14 @@
+--- a/av-quarantine/src/lib.rs
++++ b/av-quarantine/src/lib.rs
+@@ -24,7 +24,11 @@ pub struct QuarantineConfig {
+ impl Default for QuarantineConfig {
+     fn default() -> Self {
+         Self {
+-            quarantine_dir: PathBuf::from("/var/lib/winncore/quarantine"),
++            quarantine_dir: std::env::var("WINNCORE_QUARANTINE_DIR")
++                .ok()
++                .map(PathBuf::from)
++                .unwrap_or_else(|| PathBuf::from("/var/lib/winncore/quarantine")),
+             key_path: None,
+             encryption_key: None,
+         }

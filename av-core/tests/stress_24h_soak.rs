@@ -137,7 +137,7 @@ fn worker_loop(
                 break;
             }
         }
-        if iterations % 50 == 0 {
+        if iterations.is_multiple_of(50) {
             println!("worker {worker_id} iterations={iterations}");
         }
     }

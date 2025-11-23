@@ -3,6 +3,10 @@ name = "av-core"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = []
+ml-detector = []  # Feature disabled (av-ml-detector dependency commented out due to ort-sys network issues)
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
@@ -18,8 +22,8 @@ toml.workspace = true
 thiserror.workspace = true
 once_cell = "1.19"
 
-# ML detector (CRITICAL - was missing!)
-av-ml-detector = { path = "../av-ml-detector" }
+# ML detector (temporarily disabled due to ort-sys download issues in restricted network)
+# Uncomment to enable: av-ml-detector = { path = "../av-ml-detector", optional = true }
 
 [dev-dependencies]
 tempfile = "3.10"

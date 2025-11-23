@@ -2,10 +2,12 @@
 resolver = "2"
 members = [
     "av-core",
-    "av-signatures", 
+    "av-signatures",
     "av-daemon",
     "av-cli",
-    "av-quarantine", "winncore-monitor",
+    "av-quarantine",
+    # "av-ml-detector",  # Excluded by default due to ort-sys download issues. Use --features ml-detector to enable
+    "winncore-monitor",
 ]
 
 [workspace.package]

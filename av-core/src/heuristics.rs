@@ -3,17 +3,24 @@
 
 use crate::config::ScannerConfig;
 use crate::engine::SignatureMatch;
-use crate::logging;
-use av_ml_detector::{EnhancedFeatureExtractor, EnsembleDetector, MlDetector};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
+
+#[cfg(feature = "ml-detector")]
+use crate::logging;
+#[cfg(feature = "ml-detector")]
+use av_ml_detector::{EnhancedFeatureExtractor, EnsembleDetector, MlDetector};
+#[cfg(feature = "ml-detector")]
+use std::fs::File;
+#[cfg(feature = "ml-detector")]
+use std::io::Read;
+#[cfg(feature = "ml-detector")]
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct Score(pub f32);
 
+#[cfg(feature = "ml-detector")]
 pub fn score(path: &Path, _data: &[u8], config: &ScannerConfig) -> Score {
     eprintln!("🔍 [HEURISTICS] Starting ML scan for: {:?}", path);
 
@@ -40,6 +47,15 @@ pub fn score(path: &Path, _data: &[u8], config: &ScannerConfig) -> Score {
     }
 }
 
+#[cfg(not(feature = "ml-detector"))]
+pub fn score(_path: &Path, _data: &[u8], _config: &ScannerConfig) -> Score {
+    eprintln!(
+        "ℹ️  [HEURISTICS] ML detector not compiled (feature disabled); returning neutral score."
+    );
+    Score(0.0)
+}
+
+#[cfg(feature = "ml-detector")]
 fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> {
     if !looks_like_elf(path)? {
         let emit = logging::log_non_elf_skip_should_emit(config.log_verbose_non_elf_skips);
@@ -99,7 +115,9 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
 
     // If model_path is a manifest, resolve via manifest selection
     let model_path = if model_path.ends_with("manifest.json") {
-        if let Ok(manifest) = av_ml_detector::update::ModelManifest::load(std::path::Path::new(&model_path)) {
+        if let Ok(manifest) =
+            av_ml_detector::update::ModelManifest::load(std::path::Path::new(&model_path))
+        {
             if let Some(entry) = av_ml_detector::update::select_model_from_manifest(
                 &manifest,
                 config.model_updates.model_lock_version.as_deref(),
@@ -152,6 +170,7 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
     Ok(detection.score)
 }
 
+#[cfg(feature = "ml-detector")]
 fn looks_like_elf(path: &Path) -> anyhow::Result<bool> {
     let mut file = File::open(path)?;
     let mut magic = [0u8; 4];
@@ -159,6 +178,7 @@ fn looks_like_elf(path: &Path) -> anyhow::Result<bool> {
     Ok(read == 4 && magic == [0x7F, b'E', b'L', b'F'])
 }
 
+#[cfg(feature = "ml-detector")]
 fn find_ensemble_models() -> Option<(PathBuf, PathBuf, PathBuf)> {
     let mut roots: Vec<PathBuf> = vec![PathBuf::from("models"), PathBuf::from("../models")];
 

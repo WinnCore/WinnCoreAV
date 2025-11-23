@@ -12,7 +12,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # ML inference - use ndarray version that matches ort
-ort = "2.0.0-rc.10"
+# Note: Using download feature to fetch ONNX Runtime automatically
+ort = { version = "2.0.0-rc.10", features = ["download-binaries"] }
 ndarray = "0.16"
 
 # ELF parsing

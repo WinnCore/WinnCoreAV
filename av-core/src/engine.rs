@@ -41,11 +41,7 @@ pub async fn scan_path(
     let data = read_head(&ctx.target).await?;
 
     // Allowlist by path
-    if config
-        .allowlist_paths
-        .iter()
-        .any(|p| p == &ctx.target)
-    {
+    if config.allowlist_paths.iter().any(|p| p == &ctx.target) {
         return Ok(crate::ScanOutcome {
             path: ctx.target.display().to_string(),
             signatures: Vec::new(),

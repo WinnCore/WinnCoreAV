@@ -6,10 +6,15 @@ license.workspace = true
 version.workspace = true
 publish = false
 
+[features]
+default = []
+ml-detector = []  # Feature disabled (av-ml-detector dependency commented out due to ort-sys network issues)
+
 [dependencies]
 av-core = { path = "../av-core" }
 av-quarantine = { path = "../av-quarantine" }
 av-signatures = { path = "../av-signatures" }
+# av-ml-detector = { path = "../av-ml-detector", optional = true }  # Disabled due to ort-sys network issues
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -18,3 +23,4 @@ tokio.workspace = true
 tracing.workspace = true
 indicatif.workspace = true
 tracing-subscriber.workspace = true
+walkdir.workspace = true

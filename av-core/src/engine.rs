@@ -5,6 +5,7 @@ use crate::config::ScannerConfig;
 use crate::heuristics::{self};
 use crate::logging::{emit_detection_log, iso_timestamp, sha256_file};
 use crate::threat_intel::{load_ioc_cache, scan_with_yara};
+use crate::arm64_security;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -55,6 +56,7 @@ pub async fn scan_path(
             mitre_tags: Vec::new(),
             ioc_hits: Vec::new(),
             yara_matches: Vec::new(),
+            arm64_protection: None,
         });
     }
 
@@ -76,6 +78,7 @@ pub async fn scan_path(
                 mitre_tags: Vec::new(),
                 ioc_hits: Vec::new(),
                 yara_matches: Vec::new(),
+                arm64_protection: None,
             });
         }
     }
@@ -92,6 +95,8 @@ pub async fn scan_path(
         })
         .collect::<Vec<_>>();
 
+    let protections = arm64_security::analyze_elf_protections(&data);
+
     let heuristic_score = heuristics::score(&ctx.target, &data, config);
 
     let entropy = if config.enable_entropy_analysis {
@@ -104,6 +109,7 @@ pub async fn scan_path(
 
     // Detect EICAR test string
     let mut mitre_tags = Vec::new();
+    let mut notes = Vec::new();
     if config.eicar_detection && data.windows(EICAR_TEST.len()).any(|w| w == EICAR_TEST) {
         mitre_tags.push("T1204".to_string()); // User Execution (test mapping)
         recommended_action = crate::RecommendedAction::Quarantine;
@@ -120,12 +126,26 @@ pub async fn scan_path(
         }
     }
 
+    if protections.is_aarch64_elf && (!protections.pac_marked || !protections.bti_marked) {
+        notes.push("arm64_binary_missing_pac_or_bti".to_string());
+        mitre_tags.push("T1562".to_string()); // Defense Evasion: weaken protections
+        if recommended_action == crate::RecommendedAction::Allow {
+            recommended_action = crate::RecommendedAction::Monitor;
+        }
+    }
+
     if config.log_json {
-        let notes = if !signatures.is_empty() {
-            vec!["signature_match".to_string()]
-        } else {
-            Vec::new()
-        };
+        let protection_notes = protections.parsing_notes.clone();
+        let protection_log = protections.is_aarch64_elf.then(|| crate::logging::Arm64ProtectionLog {
+            is_aarch64_elf: protections.is_aarch64_elf,
+            pac_marked: protections.pac_marked,
+            bti_marked: protections.bti_marked,
+            has_gnu_property_note: protections.has_gnu_property_note,
+            parsing_notes: &protection_notes,
+        });
+        if !signatures.is_empty() {
+            notes.push("signature_match".to_string());
+        }
         let log = crate::logging::DetectionLog {
             ts: iso_timestamp(),
             host: crate::logging::host_id(),
@@ -144,6 +164,7 @@ pub async fn scan_path(
             yara_matches: &yara_verdict.matched_rules,
             ioc_hits: &ioc_hits,
             adversarial_hint: false,
+            arm64_protection: protection_log,
         };
         emit_detection_log(&log, true);
     }
@@ -157,6 +178,7 @@ pub async fn scan_path(
         mitre_tags,
         ioc_hits,
         yara_matches: yara_verdict.matched_rules,
+        arm64_protection: protections.is_aarch64_elf.then(|| protections),
     })
 }
 

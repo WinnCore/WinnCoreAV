@@ -21,6 +21,17 @@ pub struct DetectionLog<'a> {
     pub yara_matches: &'a [String],
     pub ioc_hits: &'a [String],
     pub adversarial_hint: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arm64_protection: Option<Arm64ProtectionLog<'a>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Arm64ProtectionLog<'a> {
+    pub is_aarch64_elf: bool,
+    pub pac_marked: bool,
+    pub bti_marked: bool,
+    pub has_gnu_property_note: bool,
+    pub parsing_notes: &'a [String],
 }
 
 static NON_ELF_SKIP_COUNT: AtomicUsize = AtomicUsize::new(0);

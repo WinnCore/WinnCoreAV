@@ -45,7 +45,10 @@ impl ModelManifest {
 
     pub fn verify_checksum(&self, model_path: &Path) -> Result<(), UpdateError> {
         let Some(entry) = self.models.iter().find(|m| {
-            let fname = model_path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+            let fname = model_path
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or("");
             if let Some(p) = &m.path {
                 p == fname || p == model_path.to_string_lossy().as_ref()
             } else {
@@ -111,12 +114,7 @@ pub fn select_model_from_manifest(
     lock_version: Option<&str>,
 ) -> Option<ModelEntry> {
     if let Some(lock) = lock_version {
-        if let Some(found) = manifest
-            .models
-            .iter()
-            .find(|m| m.version == lock)
-            .cloned()
-        {
+        if let Some(found) = manifest.models.iter().find(|m| m.version == lock).cloned() {
             return Some(found);
         }
     }
@@ -132,7 +130,11 @@ pub fn select_model_from_manifest(
     let mut parsed: Vec<(semver::Version, ModelEntry)> = manifest
         .models
         .iter()
-        .filter_map(|m| semver::Version::parse(&m.version).ok().map(|v| (v, m.clone())))
+        .filter_map(|m| {
+            semver::Version::parse(&m.version)
+                .ok()
+                .map(|v| (v, m.clone()))
+        })
         .collect();
     parsed.sort_by(|a, b| b.0.cmp(&a.0));
     if let Some((_, entry)) = parsed.first() {

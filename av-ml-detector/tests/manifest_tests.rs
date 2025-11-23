@@ -57,7 +57,13 @@ fn manifest_parse_and_checksum() {
             sha256: sha.clone(),
             created_at: None,
             description: None,
-            path: Some(model_path.file_name().unwrap().to_string_lossy().to_string()),
+            path: Some(
+                model_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string(),
+            ),
             current: Some(true),
         }],
     };

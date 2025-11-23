@@ -99,7 +99,9 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
 
     // If model_path is a manifest, resolve via manifest selection
     let model_path = if model_path.ends_with("manifest.json") {
-        if let Ok(manifest) = av_ml_detector::update::ModelManifest::load(std::path::Path::new(&model_path)) {
+        if let Ok(manifest) =
+            av_ml_detector::update::ModelManifest::load(std::path::Path::new(&model_path))
+        {
             if let Some(entry) = av_ml_detector::update::select_model_from_manifest(
                 &manifest,
                 config.model_updates.model_lock_version.as_deref(),

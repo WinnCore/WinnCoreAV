@@ -41,7 +41,10 @@ fn stress_memory_pressure() {
     // Small sleep to allow allocator to release and avoid noisy output.
     std::thread::sleep(Duration::from_millis(200));
 
-    println!("📊 memory pressure results: ok={} fail={}", successes, failures);
+    println!(
+        "📊 memory pressure results: ok={} fail={}",
+        successes, failures
+    );
     assert!(
         successes > failures * 9,
         "too many scan failures under pressure: ok={} fail={}",

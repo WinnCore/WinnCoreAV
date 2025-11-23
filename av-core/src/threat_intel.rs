@@ -54,7 +54,9 @@ fn dir_mtime(dir: &Path) -> Option<SystemTime> {
 
 fn compile_rules(dir: &Path) -> Result<std::sync::Arc<yara::Rules>, ThreatIntelError> {
     let mut blob = String::new();
-    for entry in std::fs::read_dir(dir).map_err(|e| ThreatIntelError::YaraUnavailable(e.to_string()))? {
+    for entry in
+        std::fs::read_dir(dir).map_err(|e| ThreatIntelError::YaraUnavailable(e.to_string()))?
+    {
         let entry = entry.map_err(|e| ThreatIntelError::YaraUnavailable(e.to_string()))?;
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("yar") {
@@ -65,7 +67,8 @@ fn compile_rules(dir: &Path) -> Result<std::sync::Arc<yara::Rules>, ThreatIntelE
         }
     }
 
-    let compiler = yara::Compiler::new().map_err(|e| ThreatIntelError::YaraUnavailable(e.to_string()))?;
+    let compiler =
+        yara::Compiler::new().map_err(|e| ThreatIntelError::YaraUnavailable(e.to_string()))?;
     let compiler = if !blob.is_empty() {
         compiler
             .add_rules_str(&blob)
@@ -81,7 +84,10 @@ fn compile_rules(dir: &Path) -> Result<std::sync::Arc<yara::Rules>, ThreatIntelE
     Ok(std::sync::Arc::new(rules))
 }
 
-pub fn scan_with_yara(path: &Path, config: &ScannerConfig) -> Result<YaraVerdict, ThreatIntelError> {
+pub fn scan_with_yara(
+    path: &Path,
+    config: &ScannerConfig,
+) -> Result<YaraVerdict, ThreatIntelError> {
     let rules_dir = match &config.threat_intel.yara_rules_dir {
         Some(p) => p,
         None => return Ok(YaraVerdict::default()),
@@ -118,7 +124,10 @@ pub fn scan_with_yara(path: &Path, config: &ScannerConfig) -> Result<YaraVerdict
         matched.push(m.identifier.to_string());
     }
 
-    let severity_hint = if matched.iter().any(|r| r.contains("critical") || r.contains("ransom")) {
+    let severity_hint = if matched
+        .iter()
+        .any(|r| r.contains("critical") || r.contains("ransom"))
+    {
         Some("high".to_string())
     } else {
         None

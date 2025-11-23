@@ -17,15 +17,15 @@
 //! - YARA-compatible rules are validated before execution, and every
 //!   decision passes through the heuristic fusion layer for suppressions.
 
+pub mod arm64_security;
 pub mod config;
 pub mod engine;
 pub mod heuristics;
+pub mod logging;
 pub mod monitoring;
 pub mod signatures;
 pub mod telemetry;
-pub mod logging;
 pub mod threat_intel;
-pub mod arm64_security;
 
 pub use config::ScannerConfig;
 

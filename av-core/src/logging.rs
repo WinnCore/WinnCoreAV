@@ -73,7 +73,7 @@ pub fn log_non_elf_skip_should_emit(verbose: bool) -> bool {
         return true;
     }
     let count = NON_ELF_SKIP_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-    count == 1 || count % 500 == 0
+    count == 1 || count.is_multiple_of(500)
 }
 
 pub fn non_elf_skip_count() -> usize {

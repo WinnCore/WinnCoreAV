@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::arm64_security;
 use crate::config::ScannerConfig;
 use crate::heuristics::{self};
 use crate::logging::{emit_detection_log, iso_timestamp, sha256_file};
 use crate::threat_intel::{load_ioc_cache, scan_with_yara};
-use crate::arm64_security;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -42,11 +42,7 @@ pub async fn scan_path(
     let data = read_head(&ctx.target).await?;
 
     // Allowlist by path
-    if config
-        .allowlist_paths
-        .iter()
-        .any(|p| p == &ctx.target)
-    {
+    if config.allowlist_paths.iter().any(|p| p == &ctx.target) {
         return Ok(crate::ScanOutcome {
             path: ctx.target.display().to_string(),
             signatures: Vec::new(),
@@ -136,13 +132,16 @@ pub async fn scan_path(
 
     if config.log_json {
         let protection_notes = protections.parsing_notes.clone();
-        let protection_log = protections.is_aarch64_elf.then(|| crate::logging::Arm64ProtectionLog {
-            is_aarch64_elf: protections.is_aarch64_elf,
-            pac_marked: protections.pac_marked,
-            bti_marked: protections.bti_marked,
-            has_gnu_property_note: protections.has_gnu_property_note,
-            parsing_notes: &protection_notes,
-        });
+        let protection_log =
+            protections
+                .is_aarch64_elf
+                .then(|| crate::logging::Arm64ProtectionLog {
+                    is_aarch64_elf: protections.is_aarch64_elf,
+                    pac_marked: protections.pac_marked,
+                    bti_marked: protections.bti_marked,
+                    has_gnu_property_note: protections.has_gnu_property_note,
+                    parsing_notes: &protection_notes,
+                });
         if !signatures.is_empty() {
             notes.push("signature_match".to_string());
         }
@@ -178,7 +177,7 @@ pub async fn scan_path(
         mitre_tags,
         ioc_hits,
         yara_matches: yara_verdict.matched_rules,
-        arm64_protection: protections.is_aarch64_elf.then(|| protections),
+        arm64_protection: protections.is_aarch64_elf.then_some(protections),
     })
 }
 

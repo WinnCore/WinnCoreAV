@@ -83,8 +83,8 @@ struct CpuInfoFeatures {
     matched_line: bool,
 }
 
-static DETECTED_CAPABILITIES: Lazy<Arm64SecurityCapabilities> = Lazy::new(|| {
-    match detect_arm64_capabilities() {
+static DETECTED_CAPABILITIES: Lazy<Arm64SecurityCapabilities> =
+    Lazy::new(|| match detect_arm64_capabilities() {
         Ok(capabilities) => capabilities,
         Err(err) => {
             warn!(
@@ -100,8 +100,7 @@ static DETECTED_CAPABILITIES: Lazy<Arm64SecurityCapabilities> = Lazy::new(|| {
                 notes: vec![format!("Detection failed: {err}")],
             }
         }
-    }
-});
+    });
 
 /// Return cached ARM64 security capabilities. The first call executes the
 /// detection routine; subsequent calls are zero-allocation reads.
@@ -158,21 +157,24 @@ fn detect_arm64_capabilities() -> Result<Arm64SecurityCapabilities, Arm64Securit
                     });
                 }
 
-                return Ok(Arm64SecurityCapabilities {
+                Ok(Arm64SecurityCapabilities {
                     has_pac: pac,
                     has_bti: bti,
                     has_mte: mte,
                     detection_method: method,
                     is_aarch64: true,
                     notes,
-                });
+                })
             }
             Err(err) => {
-                debug!(?err, "System register access unavailable; falling back to cpuinfo");
+                debug!(
+                    ?err,
+                    "System register access unavailable; falling back to cpuinfo"
+                );
                 let mut caps = cpuinfo_only_capabilities()?;
                 caps.notes
                     .push("System registers unavailable; used cpuinfo fallback".to_string());
-                return Ok(caps);
+                Ok(caps)
             }
         }
     }
@@ -299,25 +301,32 @@ fn analyze_gnu_properties(bytes: &[u8], elf: &goblin::elf::Elf) -> BinaryProtect
         let start = ph.p_offset as usize;
         let end = start.saturating_add(ph.p_filesz as usize);
         if end > bytes.len() || start >= end {
-            status.parsing_notes.push("Invalid PT_NOTE bounds".to_string());
+            status
+                .parsing_notes
+                .push("Invalid PT_NOTE bounds".to_string());
             continue;
         }
         let mut cursor = start;
         while cursor + 12 <= end {
             let namesz = u32::from_le_bytes(bytes[cursor..cursor + 4].try_into().unwrap()) as usize;
-            let descsz = u32::from_le_bytes(bytes[cursor + 4..cursor + 8].try_into().unwrap()) as usize;
+            let descsz =
+                u32::from_le_bytes(bytes[cursor + 4..cursor + 8].try_into().unwrap()) as usize;
             let note_type = u32::from_le_bytes(bytes[cursor + 8..cursor + 12].try_into().unwrap());
 
             let name_start = cursor + 12;
             let name_end = name_start.saturating_add(namesz);
             if name_end > end {
-                status.parsing_notes.push("Note name exceeds bounds".to_string());
+                status
+                    .parsing_notes
+                    .push("Note name exceeds bounds".to_string());
                 break;
             }
             let desc_start = align_to(name_end, 4);
             let desc_end = desc_start.saturating_add(descsz);
             if desc_end > end {
-                status.parsing_notes.push("Note desc exceeds bounds".to_string());
+                status
+                    .parsing_notes
+                    .push("Note desc exceeds bounds".to_string());
                 break;
             }
 
@@ -325,13 +334,10 @@ fn analyze_gnu_properties(bytes: &[u8], elf: &goblin::elf::Elf) -> BinaryProtect
                 status.has_gnu_property_note = true;
                 let mut desc_cursor = desc_start;
                 while desc_cursor + 8 <= desc_end {
-                    let pr_type = u32::from_le_bytes(
-                        bytes[desc_cursor..desc_cursor + 4].try_into().unwrap(),
-                    );
+                    let pr_type =
+                        u32::from_le_bytes(bytes[desc_cursor..desc_cursor + 4].try_into().unwrap());
                     let pr_datasz = u32::from_le_bytes(
-                        bytes[desc_cursor + 4..desc_cursor + 8]
-                            .try_into()
-                            .unwrap(),
+                        bytes[desc_cursor + 4..desc_cursor + 8].try_into().unwrap(),
                     ) as usize;
                     let data_start = desc_cursor + 8;
                     let data_end = data_start.saturating_add(pr_datasz);
@@ -414,7 +420,7 @@ mod tests {
         bytes[4] = 2; // 64-bit
         bytes[5] = 1; // little endian
         bytes[6] = 1; // version
-        // e_machine = EM_AARCH64 (183)
+                      // e_machine = EM_AARCH64 (183)
         bytes[18] = 183u8;
         // e_phoff = 0x40, e_ehsize = 0x40
         bytes[32..40].copy_from_slice(&(0x40u64).to_le_bytes());
@@ -428,7 +434,8 @@ mod tests {
         let note_offset = 0x100u64;
         let note_size = 0x40u64;
         // p_type = PT_NOTE (4)
-        bytes[ph_offset..ph_offset + 4].copy_from_slice(&(goblin::elf::program_header::PT_NOTE).to_le_bytes());
+        bytes[ph_offset..ph_offset + 4]
+            .copy_from_slice(&(goblin::elf::program_header::PT_NOTE).to_le_bytes());
         // p_offset
         bytes[ph_offset + 8..ph_offset + 16].copy_from_slice(&note_offset.to_le_bytes());
         // p_filesz
@@ -447,9 +454,13 @@ mod tests {
         cursor = align_to(cursor + 4, 4);
 
         // Property entry: type AND, data size 4, value BTI|PAC
-        bytes[cursor..cursor + 4].copy_from_slice(&GNU_PROPERTY_AARCH64_FEATURE_1_AND.to_le_bytes());
+        bytes[cursor..cursor + 4]
+            .copy_from_slice(&GNU_PROPERTY_AARCH64_FEATURE_1_AND.to_le_bytes());
         bytes[cursor + 4..cursor + 8].copy_from_slice(&(4u32).to_le_bytes());
-        bytes[cursor + 8..cursor + 12].copy_from_slice(&(GNU_PROPERTY_AARCH64_FEATURE_1_BTI | GNU_PROPERTY_AARCH64_FEATURE_1_PAC).to_le_bytes());
+        bytes[cursor + 8..cursor + 12].copy_from_slice(
+            &(GNU_PROPERTY_AARCH64_FEATURE_1_BTI | GNU_PROPERTY_AARCH64_FEATURE_1_PAC)
+                .to_le_bytes(),
+        );
 
         let status = analyze_elf_protections(&bytes);
         assert!(status.is_aarch64_elf);
@@ -465,8 +476,9 @@ mod tests {
         assert!(!caps.has_pac);
         assert!(!caps.has_bti);
         assert!(!caps.has_mte);
-        assert!(
-            matches!(caps.detection_method, DetectionMethod::CpuInfo | DetectionMethod::Unknown)
-        );
+        assert!(matches!(
+            caps.detection_method,
+            DetectionMethod::CpuInfo | DetectionMethod::Unknown
+        ));
     }
 }

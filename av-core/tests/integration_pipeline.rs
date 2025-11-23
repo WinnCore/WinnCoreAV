@@ -57,7 +57,8 @@ rule test_malware {
     cfg.log_json = true;
     cfg.threat_intel.yara_rules_dir = Some(yara_dir);
     cfg.threat_intel.ioc_cache_path = Some(ioc_path.clone());
-    cfg.allowlist_hashes.push(sha256_file(&benign_path).unwrap());
+    cfg.allowlist_hashes
+        .push(sha256_file(&benign_path).unwrap());
 
     let scanner = Scanner::new(cfg.clone()).unwrap();
 
@@ -65,17 +66,29 @@ rule test_malware {
     let benign_out = rt.block_on(scanner.scan_path(&benign_path)).unwrap();
     assert!(benign_out.yara_matches.is_empty());
     assert!(benign_out.ioc_hits.is_empty());
-    assert_eq!(benign_out.recommended_action, av_core::RecommendedAction::Allow);
+    assert_eq!(
+        benign_out.recommended_action,
+        av_core::RecommendedAction::Allow
+    );
 
     // Malicious: expect YARA + IoC → Quarantine
     let mal_out = rt.block_on(scanner.scan_path(&malicious_path)).unwrap();
-    assert!(mal_out.yara_matches.iter().any(|m| m.contains("test_malware")));
+    assert!(mal_out
+        .yara_matches
+        .iter()
+        .any(|m| m.contains("test_malware")));
     assert!(mal_out.ioc_hits.iter().any(|h| h == &mal_hash));
-    assert_eq!(mal_out.recommended_action, av_core::RecommendedAction::Quarantine);
+    assert_eq!(
+        mal_out.recommended_action,
+        av_core::RecommendedAction::Quarantine
+    );
 
     // Non-ELF: should allow, no hits
     let non_out = rt.block_on(scanner.scan_path(&non_elf_path)).unwrap();
     assert!(non_out.yara_matches.is_empty());
     assert!(non_out.ioc_hits.is_empty());
-    assert_eq!(non_out.recommended_action, av_core::RecommendedAction::Allow);
+    assert_eq!(
+        non_out.recommended_action,
+        av_core::RecommendedAction::Allow
+    );
 }

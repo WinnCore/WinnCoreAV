@@ -59,7 +59,10 @@ fn stress_io_heavy() {
 
     let scanned = scanned.load(Ordering::Relaxed);
     let errors = errors.load(Ordering::Relaxed);
-    println!("📊 io stress results: scanned={} errors={}", scanned, errors);
+    println!(
+        "📊 io stress results: scanned={} errors={}",
+        scanned, errors
+    );
     assert!(
         scanned >= (file_count as u64).saturating_sub(100),
         "not enough files scanned"

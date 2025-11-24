@@ -17,13 +17,15 @@
 //! - YARA-compatible rules are validated before execution, and every
 //!   decision passes through the heuristic fusion layer for suppressions.
 
+pub mod arm64_security;
 pub mod config;
 pub mod engine;
 pub mod heuristics;
+pub mod logging;
 pub mod monitoring;
+pub mod selfprotect;
 pub mod signatures;
 pub mod telemetry;
-pub mod logging;
 pub mod threat_intel;
 
 pub use config::ScannerConfig;
@@ -73,6 +75,8 @@ pub struct ScanOutcome {
     pub mitre_tags: Vec<String>,
     pub ioc_hits: Vec<String>,
     pub yara_matches: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arm64_protection: Option<arm64_security::BinaryProtectionStatus>,
 }
 
 /// The scanner only *recommends* actions; mutating options are left to

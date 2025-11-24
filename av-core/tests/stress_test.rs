@@ -7,6 +7,9 @@ use av_quarantine::{QuarantineConfig, QuarantineManager};
 use tempfile::TempDir;
 use tokio::task::JoinSet;
 
+#[path = "stress_common.rs"]
+mod stress_common;
+
 fn linux_rss_kb() -> Option<usize> {
     #[cfg(target_os = "linux")]
     {
@@ -29,6 +32,8 @@ fn linux_rss_kb() -> Option<usize> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn stress_concurrent_scanning_ci_safe() {
+    stress_common::configure_quiet_mode();
+
     // Keep counts modest for CI; still shakes out race conditions in Scanner.
     let file_count = 256;
     let worker_chunks = 8usize;
@@ -70,6 +75,8 @@ async fn stress_concurrent_scanning_ci_safe() {
 
 #[tokio::test]
 async fn stress_memory_regression_small_loop() {
+    stress_common::configure_quiet_mode();
+
     // CI-safe loop to catch obvious growth; heavier loop is #[ignore] below.
     let tmp = TempDir::new().expect("tempdir");
     let sample = tmp.path().join("sample.bin");
@@ -93,6 +100,8 @@ async fn stress_memory_regression_small_loop() {
 
 #[tokio::test]
 async fn stress_quarantine_batch_ci_safe() {
+    stress_common::configure_quiet_mode();
+
     let tmp = TempDir::new().expect("tempdir");
     let quarantine_dir = tmp.path().join("q");
     let cfg = QuarantineConfig {
@@ -129,6 +138,8 @@ async fn stress_quarantine_batch_ci_safe() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "heavier stress; run manually: cargo test --release stress_concurrent_scanning_heavy -- --ignored --nocapture"]
 async fn stress_concurrent_scanning_heavy() {
+    stress_common::configure_quiet_mode();
+
     let file_count = 2_000;
     let worker_chunks = 16usize;
 

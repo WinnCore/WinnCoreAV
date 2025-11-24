@@ -1,5 +1,13 @@
 # WinnCoreAV 🛡️
 
+[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Security](https://github.com/WinnCore/WinnCoreAV/workflows/Security%20Audit/badge.svg)](https://github.com/WinnCore/WinnCoreAV/security)
+[![ARM64](https://img.shields.io/badge/platform-ARM64-red.svg)](https://github.com/WinnCore/WinnCoreAV)
+[![Lines of Code](https://tokei.rs/b1/github/WinnCore/WinnCoreAV)](https://github.com/WinnCore/WinnCoreAV)
+
+
 ## 🎥 Investor Demo
 
 ![Demo Preview](assets/demo_preview.gif)

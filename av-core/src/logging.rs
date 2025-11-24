@@ -21,6 +21,17 @@ pub struct DetectionLog<'a> {
     pub yara_matches: &'a [String],
     pub ioc_hits: &'a [String],
     pub adversarial_hint: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arm64_protection: Option<Arm64ProtectionLog<'a>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Arm64ProtectionLog<'a> {
+    pub is_aarch64_elf: bool,
+    pub pac_marked: bool,
+    pub bti_marked: bool,
+    pub has_gnu_property_note: bool,
+    pub parsing_notes: &'a [String],
 }
 
 static NON_ELF_SKIP_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -62,7 +73,7 @@ pub fn log_non_elf_skip_should_emit(verbose: bool) -> bool {
         return true;
     }
     let count = NON_ELF_SKIP_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-    count == 1 || count % 500 == 0
+    count == 1 || count.is_multiple_of(500)
 }
 
 pub fn non_elf_skip_count() -> usize {
@@ -82,4 +93,9 @@ pub fn host_id() -> String {
         }
     }
     "unknown".to_string()
+}
+
+/// Returns true when stress tests have requested quieter logging.
+pub fn quiet_stress_mode() -> bool {
+    std::env::var("WINNCORE_QUIET_STRESS").is_ok()
 }

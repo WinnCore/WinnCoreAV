@@ -4,7 +4,6 @@ use anyhow::Result;
 use av_core::engine::ScanContext;
 use av_core::ScannerConfig;
 use av_quarantine::{QuarantineConfig, QuarantineManager};
-use av_ml_detector;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -15,7 +14,11 @@ use clap::{Parser, Subcommand};
     propagate_version = true
 )]
 struct Cli {
-    #[arg(long, help = "Path to scanner config TOML", default_value = "config/scanner.toml")]
+    #[arg(
+        long,
+        help = "Path to scanner config TOML",
+        default_value = "config/scanner.toml"
+    )]
     config: String,
     #[command(subcommand)]
     command: Commands,
@@ -306,14 +309,17 @@ fn handle_model(cmd: ModelCmd, _config_path: &std::path::PathBuf) -> Result<()> 
             use_manifest,
         } => {
             if use_manifest {
-                let manifest =
-                    av_ml_detector::update::ModelManifest::load(std::path::Path::new("models/manifest.json"))?;
+                let manifest = av_ml_detector::update::ModelManifest::load(std::path::Path::new(
+                    "models/manifest.json",
+                ))?;
                 for entry in &manifest.models {
                     let p = entry
                         .path
                         .as_ref()
-                        .map(|s| std::path::PathBuf::from(s))
-                        .unwrap_or_else(|| std::path::PathBuf::from(format!("models/{}.onnx", entry.model_name)));
+                        .map(std::path::PathBuf::from)
+                        .unwrap_or_else(|| {
+                            std::path::PathBuf::from(format!("models/{}.onnx", entry.model_name))
+                        });
                     manifest.verify_checksum(&p)?;
                     println!(
                         "✅ {} version {} checksum ok ({})",
@@ -335,9 +341,18 @@ fn handle_model(cmd: ModelCmd, _config_path: &std::path::PathBuf) -> Result<()> 
                 }
             }
         }
-        ModelCmd::Test { model, sample, json, model_version } => {
+        ModelCmd::Test {
+            model,
+            sample,
+            json,
+            model_version,
+        } => {
             let detector = if let Some(ver) = model_version {
-                av_ml_detector::MlDetector::from_manifest("models/manifest.json", Some(ver.as_str()), 0.5)?
+                av_ml_detector::MlDetector::from_manifest(
+                    "models/manifest.json",
+                    Some(ver.as_str()),
+                    0.5,
+                )?
             } else {
                 av_ml_detector::MlDetector::new(&model)?
             };
@@ -345,7 +360,10 @@ fn handle_model(cmd: ModelCmd, _config_path: &std::path::PathBuf) -> Result<()> 
             if json {
                 println!("{}", serde_json::to_string_pretty(&detection)?);
             } else {
-                println!("score: {:.3} malicious: {}", detection.score, detection.is_malicious);
+                println!(
+                    "score: {:.3} malicious: {}",
+                    detection.score, detection.is_malicious
+                );
                 if let Some(attrs) = detection.feature_importance {
                     for a in attrs.iter().take(5) {
                         println!("  #{:02} {} => {:.4}", a.rank, a.name, a.value);
@@ -354,7 +372,10 @@ fn handle_model(cmd: ModelCmd, _config_path: &std::path::PathBuf) -> Result<()> 
                 println!("adversarial_hint: {}", detection.adversarial_hint);
             }
         }
-        ModelCmd::Update { manifest_url, pubkey } => {
+        ModelCmd::Update {
+            manifest_url,
+            pubkey,
+        } => {
             println!(
                 "Model update stub: manifest_url={:?} pubkey={:?} (hook into signed fetcher)",
                 manifest_url, pubkey
@@ -375,7 +396,7 @@ fn handle_threat_intel(cmd: ThreatIntelCmd, _config_path: &std::path::PathBuf) -
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({"status":"ok","output":out,"url":url}).to_string()
+                    serde_json::json!({"status":"ok","output":out,"url":url})
                 );
             } else {
                 println!("Synced threat intel cache to {}", out);

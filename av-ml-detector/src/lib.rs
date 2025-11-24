@@ -11,11 +11,11 @@ use ort::session::{
     Session,
 };
 use ort::value::{DynValueTypeMarker, Value, ValueType};
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use serde::Serialize;
 
 pub mod update;
 use update::{select_model_from_manifest, ModelManifest};
@@ -96,8 +96,8 @@ impl MlDetector {
         threshold: f32,
     ) -> Result<Self> {
         let manifest = ModelManifest::load(manifest_path.as_ref())?;
-        let entry =
-            select_model_from_manifest(&manifest, lock_version).ok_or_else(|| anyhow!("No model entries in manifest"))?;
+        let entry = select_model_from_manifest(&manifest, lock_version)
+            .ok_or_else(|| anyhow!("No model entries in manifest"))?;
         let model_path = if let Some(p) = entry.path.as_ref() {
             Path::new(p).to_path_buf()
         } else {
@@ -416,7 +416,7 @@ fn build_feature_attribution(features: &[f32], names: &[&str]) -> Vec<FeatureAtt
 
 fn adversarial_hint(features: &[f32]) -> bool {
     let entropy = features.get(1).copied().unwrap_or(0.0);
-    let file_size = features.get(0).copied().unwrap_or(0.0);
+    let file_size = features.first().copied().unwrap_or(0.0);
     (entropy > 7.9 && file_size < 10_000.0) || entropy == 0.0 && file_size > 5_000_000.0
 }
 

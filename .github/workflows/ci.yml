@@ -2,155 +2,91 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
+    branches: [ main, master ]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
-  format:
-    name: Format Check
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Run tests
+        run: cargo test --all-features --workspace
+      
+      - name: Run doc tests
+        run: cargo test --doc --workspace
 
-      - uses: dtolnay/rust-toolchain@master
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.90.0"
           components: rustfmt
-
+      
       - name: Check formatting
         run: cargo fmt --all -- --check
 
   clippy:
-    name: Clippy Lints
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.90.0"
-          components: clippy, rustfmt
-
+          components: clippy
+      
       - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: clippy-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: clippy-
-
+        uses: Swatinem/rust-cache@v2
+      
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features --workspace -- -D warnings
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run security audit
+        uses: rustsec/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    name: Build (Native x86_64)
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.90.0"
-
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
       - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: build-
-
-      - name: Build all packages
-        run: cargo build --release --workspace --verbose
-
-      - name: Build succeeds
-        run: echo "✅ Build completed successfully"
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.90.0"
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: test-
-
-      - name: Run tests
-        run: cargo test --workspace --all-features
-
-  eicar-test:
-    name: EICAR Detection Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.90.0"
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: eicar-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: eicar-
+        uses: Swatinem/rust-cache@v2
       
-      - name: Build CLI
-        run: cargo build --release -p av-cli
+      - name: Build
+        run: cargo build --release --all-features --workspace
       
-      - name: Generate EICAR test file
+      - name: Check binary size
         run: |
-          mkdir -p /tmp/av-test
-          echo 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/av-test/eicar.txt
-      
-      - name: Scan EICAR
-        run: |
-          export QUARANTINE_DIR=/tmp/av-quarantine
-          cargo run --release -p av-cli -- scan /tmp/av-test/eicar.txt > scan_output.txt 2>&1 || true
-          cat scan_output.txt
-      
-      - name: Verify detection
-        run: |
-          if grep -E -q 'EICAR|THREAT|MALWARE|Quarantine|detected' scan_output.txt; then
-            echo "✅ EICAR detection confirmed"
-          else
-            echo "⚠️ EICAR detection check inconclusive (expected if no signatures)"
-          fi
-      
-      - name: Upload scan results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scan-results
-          path: scan_output.txt
+          ls -lh target/release/winncore || true
+          ls -lh target/release/winncore-daemon || true

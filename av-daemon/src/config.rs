@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::watch;
+use tracing::{error, info, warn};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DaemonConfig {
@@ -57,6 +60,7 @@ pub struct LoggingSection {
 }
 
 impl DaemonConfig {
+    #[allow(dead_code)]
     pub fn load() -> Result<Self> {
         if let Ok(custom) = std::env::var("WINNCORE_DAEMON_CONFIG") {
             if Path::new(&custom).exists() {
@@ -117,5 +121,83 @@ impl Default for DaemonConfig {
                 level: "info".into(),
             },
         }
+    }
+}
+
+/// Async configuration manager with SIGHUP reload support.
+pub struct ConfigManager {
+    config_path: std::path::PathBuf,
+    current: tokio::sync::RwLock<DaemonConfig>,
+    change_tx: watch::Sender<DaemonConfig>,
+    _change_rx: watch::Receiver<DaemonConfig>,
+}
+
+impl ConfigManager {
+    pub fn load_default() -> Result<Self> {
+        let path = if let Ok(custom) = std::env::var("WINNCORE_DAEMON_CONFIG") {
+            std::path::PathBuf::from(custom)
+        } else {
+            std::path::PathBuf::from("/etc/winncore/daemon.toml")
+        };
+
+        let initial = if path.exists() {
+            DaemonConfig::from_path(&path)?
+        } else {
+            DaemonConfig::default()
+        };
+
+        let (tx, rx) = watch::channel(initial.clone());
+        Ok(Self {
+            config_path: path,
+            current: tokio::sync::RwLock::new(initial),
+            change_tx: tx,
+            _change_rx: rx,
+        })
+    }
+
+    pub async fn get(&self) -> DaemonConfig {
+        self.current.read().await.clone()
+    }
+
+    pub async fn reload(&self) -> anyhow::Result<()> {
+        info!(path = %self.config_path.display(), "Reloading daemon configuration");
+        let config = if self.config_path.exists() {
+            DaemonConfig::from_path(&self.config_path)?
+        } else {
+            DaemonConfig::default()
+        };
+        self.validate(&config)?;
+        *self.current.write().await = config.clone();
+        let _ = self.change_tx.send(config);
+        Ok(())
+    }
+
+    fn validate(&self, cfg: &DaemonConfig) -> anyhow::Result<()> {
+        if cfg.monitoring.debounce_ms == 0 {
+            anyhow::bail!("monitoring.debounce_ms must be > 0");
+        }
+        if cfg.thresholds.kill_threshold < 0.0 || cfg.thresholds.kill_threshold > 1.0 {
+            anyhow::bail!("kill_threshold must be between 0 and 1");
+        }
+        Ok(())
+    }
+
+    pub fn spawn_sighup_handler(self: std::sync::Arc<Self>) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            let mut sighup = match signal(SignalKind::hangup()) {
+                Ok(s) => s,
+                Err(e) => {
+                    error!("Failed to register SIGHUP handler: {}", e);
+                    return;
+                }
+            };
+            loop {
+                sighup.recv().await;
+                info!("Received SIGHUP - reloading daemon config");
+                if let Err(e) = self.reload().await {
+                    warn!("Config reload failed: {}", e);
+                }
+            }
+        })
     }
 }

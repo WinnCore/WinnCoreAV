@@ -1,0 +1,16 @@
+[Unit]
+Description=WinnCoreAV Watchdog
+Documentation=https://github.com/WinnCore/WinnCoreAV
+After=winncore-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/winncore/av-watchdog
+Restart=always
+RestartSec=10
+User=root
+MemoryMax=64M
+CPUQuota=5%
+
+[Install]
+WantedBy=multi-user.target

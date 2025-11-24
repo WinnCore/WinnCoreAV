@@ -1,0 +1,19 @@
+[Unit]
+Description=WinnCoreAV eBPF Loader
+Documentation=https://github.com/WinnCore/WinnCoreAV
+Before=winncore-daemon.service
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/winncore/av-ebpf-loader
+# Only remove our pinned maps; do not nuke bpffs.
+ExecStop=/bin/sh -c 'rm -f /sys/fs/bpf/winncore/events /sys/fs/bpf/winncore/config /sys/fs/bpf/winncore/stats && rmdir /sys/fs/bpf/winncore 2>/dev/null || true'
+User=root
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/sys/fs/bpf /var/lib/winncore
+
+[Install]
+WantedBy=multi-user.target

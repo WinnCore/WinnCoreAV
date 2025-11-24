@@ -25,3 +25,6 @@ semver = { version = "1.0", features = ["serde"] }
 
 # Instruction analysis
 capstone = "0.12"
+
+[dev-dependencies]
+tempfile = "3"

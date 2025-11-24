@@ -5,7 +5,7 @@ members = [
     "av-signatures", 
     "av-daemon",
     "av-cli",
-    "av-quarantine", "winncore-monitor",
+    "av-quarantine", "winncore-monitor", "av-watchdog", "av-ebpf", "av-ebpf-loader",
 ]
 
 [workspace.package]
@@ -32,7 +32,7 @@ landlock = "0.4"
 parking_lot = "0.12"
 rand = "0.8"
 rayon = "1.10"
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"] }
 ring = "0.17"
 seccomp = "0.1"
 semver = { version = "1.0", features = ["serde"] }

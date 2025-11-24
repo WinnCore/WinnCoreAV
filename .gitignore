@@ -29,3 +29,20 @@ TELL_CLAUDE.txt
 /quarantine/
 *.yar
 !signatures/yara/*.yar
+
+# WinnCore cleanup defaults
+/target/
+__pycache__/
+*.py[cod]
+*.pyo
+.mypy_cache/
+.pytest_cache/
+node_modules/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+*.bak
+*.orig

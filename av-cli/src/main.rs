@@ -3,7 +3,6 @@
 use anyhow::Result;
 use av_core::engine::ScanContext;
 use av_core::ScannerConfig;
-use av_ml_detector;
 use av_quarantine::{QuarantineConfig, QuarantineManager};
 use clap::{Parser, Subcommand};
 
@@ -317,7 +316,7 @@ fn handle_model(cmd: ModelCmd, _config_path: &std::path::PathBuf) -> Result<()> 
                     let p = entry
                         .path
                         .as_ref()
-                        .map(|s| std::path::PathBuf::from(s))
+                        .map(std::path::PathBuf::from)
                         .unwrap_or_else(|| {
                             std::path::PathBuf::from(format!("models/{}.onnx", entry.model_name))
                         });
@@ -397,7 +396,7 @@ fn handle_threat_intel(cmd: ThreatIntelCmd, _config_path: &std::path::PathBuf) -
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({"status":"ok","output":out,"url":url}).to_string()
+                    serde_json::json!({"status":"ok","output":out,"url":url})
                 );
             } else {
                 println!("Synced threat intel cache to {}", out);

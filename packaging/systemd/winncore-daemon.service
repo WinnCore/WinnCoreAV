@@ -1,0 +1,41 @@
+[Unit]
+Description=WinnCoreAV Daemon
+Documentation=https://github.com/WinnCore/WinnCoreAV
+After=winncore-ebpf-loader.service network.target
+Wants=winncore-ebpf-loader.service
+
+[Service]
+Type=notify
+ExecStart=/usr/lib/winncore/av-daemon
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+User=winncore
+Group=winncore
+PIDFile=/run/winncore/av-daemon.pid
+RuntimeDirectory=winncore
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=25%
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/winncore /var/log/winncore
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Minimal capability set for scanning
+AmbientCapabilities=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+
+[Install]
+WantedBy=multi-user.target

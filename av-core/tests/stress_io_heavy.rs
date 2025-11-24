@@ -3,6 +3,8 @@
 //! `#[ignore]` by default because it creates tens of thousands of files.
 
 use av_core::{Scanner, ScannerConfig};
+#[path = "stress_common.rs"]
+mod stress_common;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -16,6 +18,8 @@ const DEFAULT_WORKERS: usize = 16;
 #[test]
 #[ignore = "heavy I/O; run manually: cargo test --release -p av-core stress_io_heavy -- --ignored --nocapture"]
 fn stress_io_heavy() {
+    stress_common::configure_quiet_mode();
+
     let file_count = io_file_count();
     let workers = io_workers();
     println!(

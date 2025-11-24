@@ -11,28 +11,36 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
+macro_rules! stress_log {
+    ($($arg:tt)*) => {
+        if !crate::logging::quiet_stress_mode() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct Score(pub f32);
 
 pub fn score(path: &Path, _data: &[u8], config: &ScannerConfig) -> Score {
-    eprintln!("🔍 [HEURISTICS] Starting ML scan for: {:?}", path);
+    stress_log!("🔍 [HEURISTICS] Starting ML scan for: {:?}", path);
 
     if !config.enable_ml {
-        eprintln!("ℹ️  [HEURISTICS] ML disabled via config; returning neutral score.");
+        stress_log!("ℹ️  [HEURISTICS] ML disabled via config; returning neutral score.");
         return Score(0.0);
     }
 
     match load_and_scan_ml(path, config) {
         Ok(score) => {
-            eprintln!("✅ [HEURISTICS] ML returned score: {}", score);
+            stress_log!("✅ [HEURISTICS] ML returned score: {}", score);
             Score(score)
         }
         Err(e) => {
-            eprintln!("❌ [HEURISTICS] ML FAILED: {:?}", e);
-            eprintln!("   Error details: {}", e);
+            stress_log!("❌ [HEURISTICS] ML FAILED: {:?}", e);
+            stress_log!("   Error details: {}", e);
             let mut source = e.source();
             while let Some(s) = source {
-                eprintln!("   Caused by: {}", s);
+                stress_log!("   Caused by: {}", s);
                 source = s.source();
             }
             Score(config.heuristic_threshold / 2.0)
@@ -44,13 +52,13 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
     if !looks_like_elf(path)? {
         let emit = logging::log_non_elf_skip_should_emit(config.log_verbose_non_elf_skips);
         if emit {
-            eprintln!("ℹ️  [ML] Skipping ML scan for non-ELF input: {:?}", path);
+            stress_log!("ℹ️  [ML] Skipping ML scan for non-ELF input: {:?}", path);
         }
         return Ok(0.0);
     }
 
     if let Some((lgb, xgb, mlp)) = find_ensemble_models() {
-        eprintln!(
+        stress_log!(
             "🔍 [ML] Using ensemble models: {}, {}, {}",
             lgb.display(),
             xgb.display(),
@@ -64,9 +72,10 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
         let result = detector
             .predict(&features)
             .map_err(|e| anyhow::anyhow!("Ensemble predict failed: {}", e))?;
-        eprintln!(
+        stress_log!(
             "✅ [ML] Ensemble score {:.3} (agreement {:.2})",
-            result.confidence, result.model_agreement
+            result.confidence,
+            result.model_agreement
         );
         return Ok(result.confidence);
     }
@@ -81,16 +90,16 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
         Some("../models/gbm_v3_hardened.onnx".to_string()),
     ];
 
-    eprintln!("🔍 [ML] Searching for model file...");
+    stress_log!("🔍 [ML] Searching for model file...");
     let mut model_path = None;
     for p in possible_paths.into_iter().flatten() {
-        eprintln!("   Trying: {}", p);
+        stress_log!("   Trying: {}", p);
         if std::path::Path::new(&p).exists() {
-            eprintln!("   ✅ Found at: {}", p);
+            stress_log!("   ✅ Found at: {}", p);
             model_path = Some(p);
             break;
         } else {
-            eprintln!("   ❌ Not found");
+            stress_log!("   ❌ Not found");
         }
     }
 
@@ -109,9 +118,11 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
                 let p = entry
                     .path
                     .unwrap_or_else(|| format!("models/{}.onnx", entry.model_name));
-                eprintln!(
+                stress_log!(
                     "ℹ️  [ML] Manifest selected model {} version {} at {}",
-                    entry.model_name, entry.version, p
+                    entry.model_name,
+                    entry.version,
+                    p
                 );
                 p
             } else {
@@ -127,28 +138,31 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
     let checksum = logging::sha256_file(std::path::Path::new(&model_path)).ok();
     let ts = logging::iso_timestamp();
 
-    eprintln!("🔍 [ML] Loading detector from: {}", model_path);
+    stress_log!("🔍 [ML] Loading detector from: {}", model_path);
     let detector = MlDetector::new(&model_path).map_err(|e| {
-        eprintln!("❌ [ML] MlDetector::new() failed: {:?}", e);
+        stress_log!("❌ [ML] MlDetector::new() failed: {:?}", e);
         e
     })?;
 
-    eprintln!("🔍 [ML] Scanning file: {:?}", path);
+    stress_log!("🔍 [ML] Scanning file: {:?}", path);
     let detection = detector.scan(path).map_err(|e| {
-        eprintln!("❌ [ML] detector.scan() failed: {:?}", e);
+        stress_log!("❌ [ML] detector.scan() failed: {:?}", e);
         e
     })?;
 
     if let Some(cs) = &checksum {
-        eprintln!(
+        stress_log!(
             "ℹ️  [ML] Model metadata ts={} path={} sha256={}",
-            ts, model_path, cs
+            ts,
+            model_path,
+            cs
         );
     }
 
-    eprintln!(
+    stress_log!(
         "✅ [ML] Scan complete - score: {:.3}, malicious: {}",
-        detection.score, detection.is_malicious
+        detection.score,
+        detection.is_malicious
     );
 
     Ok(detection.score)

@@ -22,6 +22,8 @@ use dedup::ScanDeduplicator;
 #[cfg(feature = "behavior_monitor")]
 mod behavior;
 mod response;
+mod startup;
+use config::ConfigManager;
 
 use config::DaemonConfig;
 use response::ResponseEngine;
@@ -67,8 +69,14 @@ async fn main() -> Result<()> {
 
     info!("🛡️  WinnCoreAV Daemon starting...");
 
-    let config = DaemonConfig::load().context("failed to load daemon configuration")?;
+    let config_manager =
+        Arc::new(ConfigManager::load_default().context("failed to load daemon configuration")?);
+    let config = config_manager.get().await;
     info!("✅ Configuration loaded");
+
+    if let Err(failures) = startup::run_startup_checks().await {
+        warn!("Startup checks reported issues: {:?}", failures);
+    }
 
     let scanner_config = ScannerConfig::default();
     let scanner = Scanner::new(scanner_config).context("failed to initialize scanner")?;
@@ -95,6 +103,10 @@ async fn main() -> Result<()> {
     let signals_handle = signals.handle();
     let signal_state = state.clone();
     let mut signals_task = tokio::spawn(async move { handle_signals(signals, signal_state).await });
+
+    // SIGHUP reload for config
+    let config_mgr_clone = config_manager.clone();
+    let _sighup_task = config_mgr_clone.spawn_sighup_handler();
 
     let monitoring_state = state.clone();
     let mut monitoring_task = tokio::spawn(async move {

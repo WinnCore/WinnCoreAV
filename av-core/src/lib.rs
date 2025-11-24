@@ -23,6 +23,7 @@ pub mod engine;
 pub mod heuristics;
 pub mod logging;
 pub mod monitoring;
+pub mod selfprotect;
 pub mod signatures;
 pub mod telemetry;
 pub mod threat_intel;

@@ -5,6 +5,8 @@
 //! local soaks without editing code.
 
 use av_core::{Scanner, ScannerConfig};
+#[path = "stress_common.rs"]
+mod stress_common;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -21,6 +23,8 @@ const MEMORY_INTERVAL: Duration = Duration::from_secs(60);
 #[test]
 #[ignore = "long-running soak; run with: cargo test --release -p av-core stress_24h_soak -- --ignored --nocapture"]
 fn stress_24h_soak() {
+    stress_common::configure_quiet_mode();
+
     let duration = soak_duration();
     let workers = soak_workers();
     let corpus_size = soak_corpus_target();

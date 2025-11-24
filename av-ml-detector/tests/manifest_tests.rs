@@ -1,7 +1,5 @@
-use av_ml_detector::update::{select_model_from_manifest, ModelEntry, ModelManifest, UpdateError};
-use av_ml_detector::MlDetector;
+use av_ml_detector::update::{select_model_from_manifest, ModelEntry, ModelManifest};
 use std::fs;
-use std::path::PathBuf;
 use tempfile::tempdir;
 
 fn dummy_manifest() -> ModelManifest {

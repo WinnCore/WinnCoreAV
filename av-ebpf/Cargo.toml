@@ -1,0 +1,31 @@
+[package]
+name = "av-ebpf"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+ebpf = ["aya", "aya-log"]
+
+[dependencies]
+tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+procfs = "0.16"
+regex = "1.10"
+async-trait = "0.1"
+sha2.workspace = true
+# eBPF (optional)
+aya = { version = "0.12", features = ["async_tokio"], optional = true }
+aya-log = { version = "0.2", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+rand = "0.8"

@@ -1,3 +1,4 @@
+use av_core::config::ThreatIntelConfig;
 use av_core::{logging::sha256_file, Scanner, ScannerConfig};
 use std::fs;
 use std::path::PathBuf;
@@ -52,13 +53,15 @@ rule test_malware {
     fs::write(&ioc_path, serde_json::to_string(&ioc_json).unwrap()).unwrap();
 
     // Config
-    let mut cfg = ScannerConfig::default();
-    cfg.enable_ml = true;
-    cfg.log_json = true;
-    cfg.threat_intel.yara_rules_dir = Some(yara_dir);
-    cfg.threat_intel.ioc_cache_path = Some(ioc_path.clone());
-    cfg.allowlist_hashes
-        .push(sha256_file(&benign_path).unwrap());
+    let cfg = ScannerConfig {
+        threat_intel: ThreatIntelConfig {
+            yara_rules_dir: Some(yara_dir),
+            ioc_cache_path: Some(ioc_path.clone()),
+            ..ThreatIntelConfig::default()
+        },
+        allowlist_hashes: vec![sha256_file(&benign_path).unwrap()],
+        ..ScannerConfig::default()
+    };
 
     let scanner = Scanner::new(cfg.clone()).unwrap();
 

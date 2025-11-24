@@ -3,6 +3,8 @@
 //! gracefully. Marked `#[ignore]` to avoid accidental OOM in CI.
 
 use av_core::{Scanner, ScannerConfig};
+#[path = "stress_common.rs"]
+mod stress_common;
 use std::time::Duration;
 
 const DEFAULT_MEMORY_MB: usize = 2048;
@@ -11,6 +13,8 @@ const DEFAULT_SAMPLE_COUNT: usize = 500;
 #[test]
 #[ignore = "allocates large buffers; run manually with care"]
 fn stress_memory_pressure() {
+    stress_common::configure_quiet_mode();
+
     let target_mb = memory_target_mb();
     println!("🧪 starting memory pressure test target={}MB", target_mb);
 

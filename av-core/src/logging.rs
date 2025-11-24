@@ -94,3 +94,8 @@ pub fn host_id() -> String {
     }
     "unknown".to_string()
 }
+
+/// Returns true when stress tests have requested quieter logging.
+pub fn quiet_stress_mode() -> bool {
+    std::env::var("WINNCORE_QUIET_STRESS").is_ok()
+}

@@ -2,6 +2,8 @@
 //! contention in the Scanner pipeline. Marked ignored by default.
 
 use av_core::{Scanner, ScannerConfig};
+#[path = "stress_common.rs"]
+mod stress_common;
 use std::sync::Arc;
 use std::thread;
 use tempfile::TempDir;
@@ -12,6 +14,8 @@ const FILES_PER_THREAD: usize = 128;
 #[test]
 #[ignore = "high concurrency; run manually: cargo test --release -p av-core stress_concurrent_scanning_ext -- --ignored --nocapture"]
 fn stress_concurrent_scanning_ext() {
+    stress_common::configure_quiet_mode();
+
     let threads = std::env::var("WINNCORE_CONC_THREADS")
         .ok()
         .and_then(|v| v.parse().ok())

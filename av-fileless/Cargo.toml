@@ -1,0 +1,15 @@
+[package]
+name = "av-fileless"
+version = "0.1.0"
+edition = "2021"
+description = "Fileless malware detection for WinnCore EDR"
+publish = false
+
+[dependencies]
+libc = "0.2"
+nix = "0.27"
+tracing = "0.1"
+procfs = "0.16"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+hex = "0.4"

@@ -46,3 +46,11 @@ Thumbs.db
 *~
 *.bak
 *.orig
+
+# Local test run artifacts
+test_output_*
+# Local runtime / demo artifacts
+alerts.json
+*.cast
+# Local artifacts
+attack_sim_results.json

@@ -2,10 +2,58 @@
 resolver = "2"
 members = [
     "av-core",
-    "av-signatures", 
-    "av-daemon",
     "av-cli",
-    "av-quarantine", "winncore-monitor", "av-watchdog", "av-ebpf", "av-ebpf-loader",
+    "av-daemon",
+    "av-ml-detector",
+    "av-quarantine",
+    "av-signatures",
+    "av-ebpf",
+    "av-ebpf-common",
+    "av-ebpf-loader",
+    "av-behavioral",
+    "av-containers",
+    "av-memory",
+    "av-response",
+    "av-rootkit",
+    "av-threatintel",
+    "av-iouring",
+    "av-ebpf-detect",
+    "av-fileless",
+    "av-stack-trace",
+    "av-deception",
+    "av-arm64-hw",
+    "av-mitre-tests",
+    "av-attack-sim",
+    "winncore-monitor",
+    "av-watchdog",
+    "av-gui",
+]
+default-members = [
+    "av-core",
+    "av-cli",
+    "av-daemon",
+    "av-ml-detector",
+    "av-quarantine",
+    "av-signatures",
+    "av-ebpf",
+    "av-ebpf-common",
+    "av-ebpf-loader",
+    "av-behavioral",
+    "av-containers",
+    "av-memory",
+    "av-response",
+    "av-rootkit",
+    "av-threatintel",
+    "av-iouring",
+    "av-ebpf-detect",
+    "av-fileless",
+    "av-stack-trace",
+    "av-deception",
+    "av-arm64-hw",
+    "av-mitre-tests",
+    "av-attack-sim",
+    "winncore-monitor",
+    "av-watchdog",
 ]
 
 [workspace.package]
@@ -44,7 +92,7 @@ thiserror = "2.0"
 tokio = { version = "1.42", features = ["full"] }
 toml = "0.8"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["fmt", "json", "env-filter"] }
 url = "2.5"
 walkdir = "2.5"
 yara = { version = "0.23.0", default-features = false, features = ["vendored", "bindgen"] }

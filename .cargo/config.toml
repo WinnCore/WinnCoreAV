@@ -1,0 +1,49 @@
+# WinnCore AV - Hardened build configuration
+# Enables exploit mitigations and ARM64 protections where available.
+
+[build]
+rustflags = [
+    # Exploit mitigations
+    "-C", "overflow-checks=on",
+    "-C", "relocation-model=pic",
+    "-C", "link-arg=-Wl,-z,relro",
+    "-C", "link-arg=-Wl,-z,now",
+    "-C", "link-arg=-Wl,-z,noexecstack",
+    "-C", "link-arg=-fstack-clash-protection",
+
+    # ARM64-specific hardening
+    "-C", "link-arg=-mbranch-protection=bti",
+    "-C", "link-arg=-mbranch-protection=pac-ret",
+
+    # Fortification
+    "-C", "link-arg=-D_FORTIFY_SOURCE=2",
+]
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+debug = false
+strip = "symbols"
+
+[profile.release.package."*"]
+opt-level = 3
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = "none"
+
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-musl-gcc"
+rustflags = [
+    "-C", "target-feature=+crt-static",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-Wl,-dead_strip",
+]

@@ -1,0 +1,15 @@
+[package]
+name = "av-iouring"
+version = "0.1.0"
+edition = "2021"
+description = "io_uring attack detection scaffolding for WinnCore"
+publish = false
+
+[dependencies]
+libc = "0.2"
+nix = { version = "0.27", features = ["process", "ptrace"] }
+tracing = "0.1"
+thiserror = "1.0"
+procfs = "0.16"
+serde = { version = "1.0", features = ["derive"] }
+parking_lot = "0.12"

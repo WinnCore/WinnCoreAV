@@ -1,0 +1,260 @@
+# WinnCore EDR MITRE ATT&CK Test Suite
+# Based on Atomic Red Team format
+
+name: "Linux Attack Techniques"
+version: "1.0.0"
+
+tests:
+  # Execution (TA0002)
+  - id: T1059.004-1
+    name: "Unix Shell Command Execution"
+    description: "Execute commands via bash"
+    technique_id: "T1059.004"
+    tactic: "execution"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "echo 'test command execution'"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: false
+      technique_match: false
+
+  - id: T1059.004-2
+    name: "Web Server Spawning Shell"
+    description: "Simulates webshell - shell spawned by web process"
+    technique_id: "T1059.004"
+    tactic: "execution"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - |
+          (exec -a apache2 bash -c 'bash -c "id"') &
+          sleep 1
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "critical"
+      rule_id: "web_server_shell"
+      technique_match: true
+
+  - id: T1059.004-3
+    name: "Base64 Encoded Command"
+    description: "Execute base64-encoded command"
+    technique_id: "T1059.004"
+    tactic: "execution"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "echo 'aWQ=' | base64 -d | bash"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "high"
+      technique_match: true
+
+  # Persistence (TA0003)
+  - id: T1053.003-1
+    name: "Crontab Entry"
+    description: "Create persistence via crontab"
+    technique_id: "T1053.003"
+    tactic: "persistence"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "echo '* * * * * /tmp/evil.sh' | crontab -"
+      timeout_secs: 10
+    cleanup:
+      - "crontab -r"
+    expected_detection:
+      should_detect: true
+      severity: "medium"
+      technique_match: true
+
+  - id: T1546.004-1
+    name: "Bashrc Modification"
+    description: "Persistence via .bashrc"
+    technique_id: "T1546.004"
+    tactic: "persistence"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "echo 'echo pwned' >> ~/.bashrc.test"
+      timeout_secs: 10
+    cleanup:
+      - "rm -f ~/.bashrc.test"
+    expected_detection:
+      should_detect: true
+      severity: "medium"
+      technique_match: true
+
+  # Defense Evasion (TA0005)
+  - id: T1070.003-1
+    name: "Clear Bash History"
+    description: "Clear command history to hide activity"
+    technique_id: "T1070.003"
+    tactic: "defense_evasion"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "history -c"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "high"
+      technique_match: true
+
+  - id: T1070.002-1
+    name: "Log File Deletion"
+    description: "Delete system logs"
+    technique_id: "T1070.002"
+    tactic: "defense_evasion"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "touch /tmp/fake_syslog && rm /tmp/fake_syslog"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: false
+      technique_match: false
+
+  # Credential Access (TA0006)
+  - id: T1003.008-1
+    name: "Shadow File Access"
+    description: "Read /etc/shadow"
+    technique_id: "T1003.008"
+    tactic: "credential_access"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "cat /etc/shadow 2>/dev/null || true"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "critical"
+      technique_match: true
+
+  - id: T1552.004-1
+    name: "SSH Key Theft"
+    description: "Access SSH private keys"
+    technique_id: "T1552.004"
+    tactic: "credential_access"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "cat ~/.ssh/id_rsa 2>/dev/null || true"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "high"
+      technique_match: true
+
+  # Discovery (TA0007)
+  - id: T1046-1
+    name: "Network Enumeration with nmap"
+    description: "Port scan local network"
+    technique_id: "T1046"
+    tactic: "discovery"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "which nmap && nmap -sn 127.0.0.1 || true"
+      timeout_secs: 30
+    expected_detection:
+      should_detect: true
+      severity: "low"
+      technique_match: true
+
+  - id: T1087.001-1
+    name: "Local User Enumeration"
+    description: "Enumerate local users"
+    technique_id: "T1087.001"
+    tactic: "discovery"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "cat /etc/passwd | cut -d: -f1"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "low"
+      technique_match: true
+
+  # Command and Control (TA0011)
+  - id: T1095-1
+    name: "Netcat Reverse Shell"
+    description: "Establish reverse shell with netcat"
+    technique_id: "T1095"
+    tactic: "command_and_control"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - |
+          which nc && nc -h 2>&1 | grep -q '\-e' && echo "nc -e available"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: false
+      technique_match: false
+
+  - id: T1095-2
+    name: "Reverse Shell via Bash"
+    description: "Bash reverse shell pattern"
+    technique_id: "T1095"
+    tactic: "command_and_control"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - |
+          echo "bash -i >& /dev/tcp/127.0.0.1/4444 0>&1" > /tmp/test_shell.sh
+          rm /tmp/test_shell.sh
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "critical"
+      technique_match: true
+
+  # Fileless Execution
+  - id: T1620-1
+    name: "memfd_create Execution"
+    description: "Execute binary from memory using memfd_create"
+    technique_id: "T1620"
+    tactic: "defense_evasion"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "ls -la /proc/*/exe 2>/dev/null | grep memfd || true"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: false
+      technique_match: false
+
+  # Container Escape
+  - id: container-escape-1
+    name: "Docker Socket Access"
+    description: "Access Docker socket from within process"
+    technique_id: "T1611"
+    tactic: "privilege_escalation"
+    platforms: ["linux"]
+    executor:
+      executor_type: "bash"
+      commands:
+        - "ls -la /var/run/docker.sock 2>/dev/null || true"
+      timeout_secs: 10
+    expected_detection:
+      should_detect: true
+      severity: "high"
+      technique_match: true

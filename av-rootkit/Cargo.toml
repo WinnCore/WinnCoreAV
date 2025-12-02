@@ -1,0 +1,13 @@
+[package]
+name = "av-rootkit"
+version = "0.1.0"
+edition = "2021"
+description = "Rootkit and kernel tampering detection for WinnCore"
+publish = false
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+thiserror = "1.0"
+procfs = "0.16"
+glob = "0.3"

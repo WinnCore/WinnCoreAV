@@ -3,7 +3,6 @@
 
 use anyhow::{anyhow, Context, Result};
 use capstone::{arch, prelude::*, Insn};
-use log::{info, warn};
 use ndarray::Array2;
 use ort::memory::Allocator;
 use ort::session::{
@@ -15,10 +14,18 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use thiserror::Error;
+use tracing::{debug, info, warn};
 
 pub mod update;
 use update::{select_model_from_manifest, ModelManifest};
+
+/// Sampling + rate limiting interface for logging
+pub trait MlLogSampler: Send + Sync {
+    fn should_log_ml_inference(&self) -> bool;
+    fn check_rate_limit(&self) -> bool;
+}
 
 #[derive(Error, Debug)]
 pub enum MlError {
@@ -82,6 +89,7 @@ pub struct FeatureAttribution {
 pub struct MlDetector {
     session: Arc<Mutex<Session>>,
     threshold: f32,
+    log_sampler: Option<Arc<dyn MlLogSampler>>,
 }
 
 impl MlDetector {
@@ -89,11 +97,27 @@ impl MlDetector {
         Self::with_threshold(model_path, 0.5)
     }
 
+    pub fn new_with_sampler<P: AsRef<Path>>(
+        model_path: P,
+        log_sampler: Option<Arc<dyn MlLogSampler>>,
+    ) -> Result<Self> {
+        Self::with_threshold_and_sampler(model_path, 0.5, log_sampler)
+    }
+
     /// Resolve model using a manifest if present. If `lock_version` is set, prefer that version.
     pub fn from_manifest<P: AsRef<Path>>(
         manifest_path: P,
         lock_version: Option<&str>,
         threshold: f32,
+    ) -> Result<Self> {
+        Self::from_manifest_with_sampler(manifest_path, lock_version, threshold, None)
+    }
+
+    pub fn from_manifest_with_sampler<P: AsRef<Path>>(
+        manifest_path: P,
+        lock_version: Option<&str>,
+        threshold: f32,
+        log_sampler: Option<Arc<dyn MlLogSampler>>,
     ) -> Result<Self> {
         let manifest = ModelManifest::load(manifest_path.as_ref())?;
         let entry = select_model_from_manifest(&manifest, lock_version)
@@ -103,7 +127,7 @@ impl MlDetector {
         } else {
             Path::new(&format!("models/{}.onnx", entry.model_name)).to_path_buf()
         };
-        let detector = Self::with_threshold(&model_path, threshold)?;
+        let detector = Self::with_threshold_and_sampler(&model_path, threshold, log_sampler)?;
         info!(
             "Selected model from manifest: {} version {} path {:?}",
             entry.model_name, entry.version, model_path
@@ -112,6 +136,14 @@ impl MlDetector {
     }
 
     pub fn with_threshold<P: AsRef<Path>>(model_path: P, threshold: f32) -> Result<Self> {
+        Self::with_threshold_and_sampler(model_path, threshold, None)
+    }
+
+    pub fn with_threshold_and_sampler<P: AsRef<Path>>(
+        model_path: P,
+        threshold: f32,
+        log_sampler: Option<Arc<dyn MlLogSampler>>,
+    ) -> Result<Self> {
         let model_path = model_path.as_ref();
 
         if !model_path.exists() {
@@ -130,6 +162,7 @@ impl MlDetector {
         Ok(Self {
             session: Arc::new(Mutex::new(session)),
             threshold,
+            log_sampler,
         })
     }
 
@@ -227,6 +260,7 @@ impl MlDetector {
 
     pub fn scan<P: AsRef<Path>>(&self, file_path: P) -> Result<MlDetection> {
         let file_path = file_path.as_ref();
+        let start = Instant::now();
 
         // Extract features
         let features = self.extract_features(file_path)?;
@@ -259,6 +293,28 @@ impl MlDetector {
         detection.feature_importance =
             Some(build_feature_attribution(&features, &BASE_FEATURE_NAMES));
         detection.adversarial_hint = adversarial_hint(&features);
+        let elapsed = start.elapsed();
+
+        if let Some(ref sampler) = self.log_sampler {
+            if sampler.should_log_ml_inference() && sampler.check_rate_limit() {
+                debug!(
+                    target: "ml_inference",
+                    file = %file_path.display(),
+                    threat_score = detection.score,
+                    inference_ms = elapsed.as_millis(),
+                    "ML inference complete"
+                );
+            }
+        }
+
+        if detection.score > 0.8 {
+            warn!(
+                file = %file_path.display(),
+                threat_score = detection.score,
+                malicious = detection.is_malicious,
+                "High-threat detection"
+            );
+        }
         Ok(detection)
     }
 

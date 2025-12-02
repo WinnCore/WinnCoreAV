@@ -17,18 +17,37 @@
 //! - YARA-compatible rules are validated before execution, and every
 //!   decision passes through the heuristic fusion layer for suppressions.
 
+pub mod allocator;
 pub mod arm64_security;
+pub mod bounded;
 pub mod config;
+pub mod encrypted_strings;
 pub mod engine;
 pub mod heuristics;
 pub mod logging;
 pub mod monitoring;
+pub mod mte;
+pub mod retry;
+pub mod secure_mem;
 pub mod selfprotect;
 pub mod signatures;
 pub mod telemetry;
 pub mod threat_intel;
+pub mod validation;
 
+pub use allocator::{configure_secure_allocator, get_allocator_stats, verify_heap_integrity};
+pub use bounded::{BoundedMap, BoundedQueue, RateLimitedCounter};
 pub use config::ScannerConfig;
+pub use encrypted_strings::{EncryptedString, RuntimeEncrypted};
+pub use logging::{init_logging, LogConfig, LogSampler, SamplerStats};
+pub use mte::{init_mte, is_mte_active, is_mte_supported, MteError, MteMode};
+pub use retry::{with_retry, with_retry_context, RetryConfig, RetryResult, RetryableError};
+pub use secure_mem::{
+    constant_time_eq, disable_core_dumps, secret_bytes_eq, SecretBytes, SecretVec,
+};
+pub use validation::{
+    sanitize_filename, validate_sha256, ConfigValidator, PathValidator, ValidationError,
+};
 
 use std::path::Path;
 

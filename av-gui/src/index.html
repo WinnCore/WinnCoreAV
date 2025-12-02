@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinnCoreAV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e4e4e7;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #27272a;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: 600;
+            color: #06b6d4;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-badge.online {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #71717a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+        }
+        
+        .stat-card.critical .stat-value { color: #ef4444; }
+        .stat-card.high .stat-value { color: #f97316; }
+        .stat-card.medium .stat-value { color: #eab308; }
+        .stat-card.low .stat-value { color: #22c55e; }
+        .stat-card.total .stat-value { color: #06b6d4; }
+        
+        /* Alerts Table */
+        .alerts-section {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #27272a;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .refresh-btn {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            color: #e4e4e7;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #3f3f46;
+        }
+        
+        .alerts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .alerts-table th {
+            text-align: left;
+            padding: 14px 24px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #71717a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #0f0f12;
+            border-bottom: 1px solid #27272a;
+        }
+        
+        .alerts-table td {
+            padding: 16px 24px;
+            border-bottom: 1px solid #27272a;
+            font-size: 14px;
+        }
+        
+        .alerts-table tr:hover {
+            background: rgba(6, 182, 212, 0.05);
+        }
+        
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .severity-badge.critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+        
+        .severity-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+        
+        .severity-badge.medium {
+            background: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+        
+        .severity-badge.low {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+        
+        .technique-badge {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            color: #06b6d4;
+            background: rgba(6, 182, 212, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .cmdline {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            color: #a1a1aa;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .timestamp {
+            color: #71717a;
+            font-size: 13px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: #71717a;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">W</div>
+                <span class="logo-text">WinnCoreAV</span>
+            </div>
+            <div id="daemon-status" class="status-badge offline">
+                <span class="status-dot"></span>
+                <span>Checking...</span>
+            </div>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-label">Total Alerts</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-card critical">
+                <div class="stat-label">Critical</div>
+                <div class="stat-value" id="stat-critical">0</div>
+            </div>
+            <div class="stat-card high">
+                <div class="stat-label">High</div>
+                <div class="stat-value" id="stat-high">0</div>
+            </div>
+            <div class="stat-card medium">
+                <div class="stat-label">Medium</div>
+                <div class="stat-value" id="stat-medium">0</div>
+            </div>
+            <div class="stat-card low">
+                <div class="stat-label">Low</div>
+                <div class="stat-value" id="stat-low">0</div>
+            </div>
+        </div>
+        
+        <section class="alerts-section">
+            <div class="section-header">
+                <h2 class="section-title">Recent Alerts</h2>
+                <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
+            </div>
+            <table class="alerts-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Technique</th>
+                        <th>Rule</th>
+                        <th>Process</th>
+                        <th>Command</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-body">
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-state-icon">🛡️</div>
+                            <div>No alerts detected. System is clean.</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+    
+    <script>
+        const { invoke } = window.__TAURI__.tauri;
+        
+        async function checkDaemonStatus() {
+            try {
+                const isRunning = await invoke('get_daemon_status');
+                const statusEl = document.getElementById('daemon-status');
+                if (isRunning) {
+                    statusEl.className = 'status-badge online';
+                    statusEl.innerHTML = '<span class="status-dot"></span><span>Protected</span>';
+                } else {
+                    statusEl.className = 'status-badge offline';
+                    statusEl.innerHTML = '<span class="status-dot"></span><span>Daemon Offline</span>';
+                }
+            } catch (e) {
+                console.error('Failed to check daemon status:', e);
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const stats = await invoke('get_stats');
+                document.getElementById('stat-total').textContent = stats.total;
+                document.getElementById('stat-critical').textContent = stats.critical;
+                document.getElementById('stat-high').textContent = stats.high;
+                document.getElementById('stat-medium').textContent = stats.medium;
+                document.getElementById('stat-low').textContent = stats.low;
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+        
+        async function loadAlerts() {
+            try {
+                const alerts = await invoke('get_alerts');
+                const tbody = document.getElementById('alerts-body');
+                
+                if (alerts.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <div class="empty-state-icon">🛡️</div>
+                                <div>No alerts detected. System is clean.</div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Sort by timestamp descending (newest first)
+                alerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                tbody.innerHTML = alerts.slice(0, 100).map(alert => `
+                    <tr>
+                        <td class="timestamp">${formatTime(alert.timestamp)}</td>
+                        <td><span class="severity-badge ${alert.severity.toLowerCase()}">${alert.severity}</span></td>
+                        <td><span class="technique-badge">${alert.technique}</span></td>
+                        <td>${alert.rule_id}</td>
+                        <td>${alert.comm || '-'} (${alert.pid || '-'})</td>
+                        <td class="cmdline" title="${escapeHtml(alert.cmdline || '')}">${escapeHtml(alert.cmdline || '-')}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load alerts:', e);
+            }
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function refreshData() {
+            await Promise.all([
+                checkDaemonStatus(),
+                loadStats(),
+                loadAlerts()
+            ]);
+        }
+        
+        // Initial load
+        refreshData();
+        
+        // Auto-refresh every 2 seconds
+        setInterval(refreshData, 2000);
+    </script>
+</body>
+</html>

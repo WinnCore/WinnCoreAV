@@ -13,6 +13,13 @@ behavior_monitor = ["aya"]
 [dependencies]
 winncore-monitor = { path = "../winncore-monitor" }
 av-core = { path = "../av-core" }
+av-behavioral = { path = "../av-behavioral" }
+av-ebpf-common = { path = "../av-ebpf-common", features = ["user"] }
+av-containers = { path = "../av-containers" }
+av-memory = { path = "../av-memory" }
+av-response = { path = "../av-response" }
+av-rootkit = { path = "../av-rootkit" }
+av-threatintel = { path = "../av-threatintel" }
 anyhow.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
@@ -20,6 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde.workspace = true
 serde_json.workspace = true
 toml = "0.8"
+chrono.workspace = true
 notify = "6.1"
 inotify = { version = "0.10", default-features = false }
 signal-hook = "0.3"
@@ -30,3 +38,10 @@ config = "0.14"
 tokio-stream = "0.1"
 aya = { version = "0.13", optional = true, features = ["async_tokio"] }
 bytes = "1.10"
+sha2.workspace = true
+hex.workspace = true
+libc = "0.2"
+parking_lot = "0.12"
+prometheus = "0.13"
+lazy_static = "1.4"
+hyper = { version = "0.14", features = ["server", "tcp", "http1"] }

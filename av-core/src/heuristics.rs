@@ -4,12 +4,13 @@
 use crate::config::ScannerConfig;
 use crate::engine::SignatureMatch;
 use crate::logging;
-use av_ml_detector::{EnhancedFeatureExtractor, EnsembleDetector, MlDetector};
+use av_ml_detector::{EnhancedFeatureExtractor, EnsembleDetector, MlDetector, MlLogSampler};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 macro_rules! stress_log {
     ($($arg:tt)*) => {
@@ -106,6 +107,9 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
     let model_path =
         model_path.ok_or_else(|| anyhow::anyhow!("Model file not found in any location"))?;
 
+    let log_sampler: Option<Arc<dyn MlLogSampler>> =
+        crate::logging::global_sampler().map(|s| s as Arc<dyn MlLogSampler>);
+
     // If model_path is a manifest, resolve via manifest selection
     let model_path = if model_path.ends_with("manifest.json") {
         if let Ok(manifest) =
@@ -139,7 +143,12 @@ fn load_and_scan_ml(path: &Path, config: &ScannerConfig) -> anyhow::Result<f32> 
     let ts = logging::iso_timestamp();
 
     stress_log!("🔍 [ML] Loading detector from: {}", model_path);
-    let detector = MlDetector::new(&model_path).map_err(|e| {
+    let detector = MlDetector::with_threshold_and_sampler(
+        &model_path,
+        config.ml_threshold,
+        log_sampler.clone(),
+    )
+    .map_err(|e| {
         stress_log!("❌ [ML] MlDetector::new() failed: {:?}", e);
         e
     })?;

@@ -1,0 +1,15 @@
+[package]
+name = "av-stack-trace"
+version = "0.1.0"
+edition = "2021"
+description = "Stack trace validation for direct syscall detection"
+publish = false
+
+[dependencies]
+libc = "0.2"
+nix = { version = "0.27", features = ["process", "ptrace"] }
+tracing = "0.1"
+procfs = "0.16"
+serde = { version = "1.0", features = ["derive"] }
+object = "0.32"
+memmap2 = "0.9"

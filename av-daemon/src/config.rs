@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -54,9 +56,17 @@ pub struct LimitsSection {
     pub scan_timeout_seconds: u64,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[serde(default)]
 pub struct LoggingSection {
     pub level: String,
+    pub json: bool,
+    pub enable_sampling: bool,
+    pub ml_sample_rate: u64,
+    pub file_scan_sample_rate: u64,
+    pub max_logs_per_second: u64,
+    pub channel_buffer_size: usize,
+    pub log_file: Option<String>,
 }
 
 impl DaemonConfig {
@@ -119,6 +129,13 @@ impl Default for DaemonConfig {
             },
             logging: LoggingSection {
                 level: "info".into(),
+                json: false,
+                enable_sampling: true,
+                ml_sample_rate: 100,
+                file_scan_sample_rate: 10,
+                max_logs_per_second: 1000,
+                channel_buffer_size: 10_000,
+                log_file: None,
             },
         }
     }

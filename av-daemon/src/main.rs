@@ -1,385 +1,148 @@
-use anyhow::{Context, Result};
-use av_core::{Scanner, ScannerConfig};
-use notify::{
-    Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
-};
-use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
-use signal_hook_tokio::Signals;
-use std::{
-    collections::VecDeque,
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
-use tokio::sync::{mpsc, RwLock};
-use tokio_stream::StreamExt;
-use tracing::{error, info, warn};
+//! WinnCoreAV Daemon - ARM64-native endpoint detection and response
+//!
+//! Detection pipeline:
+//!   ProcessMonitor (procfs) → BehavioralPipeline (rules) → AlertLogger (JSON)
+//!
+//! Design decisions:
+//!   - procfs polling over eBPF for ARM64 portability (Graviton, M-series, Snapdragon)
+//!   - Tokio async runtime for concurrent event processing
+//!   - JSON-lines alert format for SIEM integration
+//!
+//! Performance targets: <5% CPU, <50MB RAM, <500ms detection latency
 
+use std::sync::Arc;
+
+use anyhow::Result;
+use tracing::info;
+
+mod aslr_verify;
+mod behavioral_pipeline;
+mod circuit_breaker;
 mod config;
-mod dedup;
-use dedup::ScanDeduplicator;
-#[cfg(feature = "behavior_monitor")]
-mod behavior;
+mod error;
+mod hardening;
+mod health;
+mod heuristics;
+mod integrity;
+mod landlock;
+mod memory_audit;
+mod metrics;
+mod namespaces;
+mod process_monitor;
 mod response;
-mod startup;
-use config::ConfigManager;
+mod security;
+mod shutdown;
+mod watchdog;
 
-use config::DaemonConfig;
-use response::ResponseEngine;
-
-#[derive(Clone)]
-struct DaemonState {
-    scanner: Arc<Scanner>,
-    response: Arc<RwLock<ResponseEngine>>,
-    config: Arc<DaemonConfig>,
-    stats: Arc<RwLock<Stats>>,
-    dedup: Arc<ScanDeduplicator>,
-}
-
-#[derive(Debug)]
-struct Stats {
-    scans_today: u64,
-    threats_found: u64,
-    files_quarantined: u64,
-    processes_killed: u64,
-    uptime_start: std::time::Instant,
-}
-
-impl Stats {
-    fn new() -> Self {
-        Self {
-            scans_today: 0,
-            threats_found: 0,
-            files_quarantined: 0,
-            processes_killed: 0,
-            uptime_start: std::time::Instant::now(),
-        }
-    }
-}
+use behavioral_pipeline::{log_alert, start_behavioral_pipeline, BehavioralConfig};
+use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
+use error::Subsystem;
+use hardening::{init_all_hardening, start_background_hardening, HardeningConfig};
+use health::HealthChecker;
+use metrics::register_metrics;
+use process_monitor::{spawn_process_monitor, ProcessMonitorConfig};
+use security::start_security_tasks;
+use shutdown::install_signal_handlers;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
-
-    info!("🛡️  WinnCoreAV Daemon starting...");
-
-    let config_manager =
-        Arc::new(ConfigManager::load_default().context("failed to load daemon configuration")?);
-    let config = config_manager.get().await;
-    info!("✅ Configuration loaded");
-
-    if let Err(failures) = startup::run_startup_checks().await {
-        warn!("Startup checks reported issues: {:?}", failures);
-    }
-
-    let scanner_config = ScannerConfig::default();
-    let scanner = Scanner::new(scanner_config).context("failed to initialize scanner")?;
-    info!("✅ Scanner initialized");
-
-    let response_engine =
-        ResponseEngine::new(config.response.enabled, config.thresholds.kill_threshold);
-    info!("✅ Response engine initialized");
-
-    let dedup = ScanDeduplicator::new(config.monitoring.debounce_ms);
-
-    let state = DaemonState {
-        scanner: Arc::new(scanner),
-        response: Arc::new(RwLock::new(response_engine)),
-        config: Arc::new(config.clone()),
-        stats: Arc::new(RwLock::new(Stats::new())),
-        dedup: Arc::new(dedup),
+    let mut harden_cfg = if std::env::var("WINNCORE_DEBUG").is_ok() {
+        HardeningConfig::development()
+    } else {
+        HardeningConfig::default()
     };
 
-    write_pid_file(&config.daemon.pid_file)?;
-    info!("✅ PID file written: {}", config.daemon.pid_file);
+    // Allow log level override via env.
+    if let Ok(level) = std::env::var("WINNCORE_LOG_LEVEL") {
+        harden_cfg.log_config.level = level;
+    }
 
-    let signals = Signals::new([SIGTERM, SIGINT, SIGHUP])?;
-    let signals_handle = signals.handle();
-    let signal_state = state.clone();
-    let mut signals_task = tokio::spawn(async move { handle_signals(signals, signal_state).await });
+    let _hardening =
+        init_all_hardening(&harden_cfg).map_err(|e| anyhow::anyhow!("Hardening failed: {}", e))?;
 
-    // SIGHUP reload for config
-    let config_mgr_clone = config_manager.clone();
-    let _sighup_task = config_mgr_clone.spawn_sighup_handler();
+    let _auditor = start_background_hardening(&harden_cfg).await;
 
-    let monitoring_state = state.clone();
-    let mut monitoring_task = tokio::spawn(async move {
-        if let Err(err) = monitor_files(monitoring_state).await {
-            error!("File monitoring stopped: {err:?}");
-        }
-    });
+    // Initialize health checker and circuits for subsystems.
+    let health = Arc::new(HealthChecker::new());
+    let cb_cfg = CircuitBreakerConfig::default();
+    let ml_cb = Arc::new(CircuitBreaker::new("ml_detection", cb_cfg.clone()));
+    let sig_cb = Arc::new(CircuitBreaker::new("signature_matching", cb_cfg.clone()));
+    let ebpf_cb = Arc::new(CircuitBreaker::new("ebpf_monitoring", cb_cfg.clone()));
+    let quarantine_cb = Arc::new(CircuitBreaker::new("quarantine", cb_cfg));
 
-    let stats_state = state.clone();
-    let mut stats_task = tokio::spawn(async move {
-        report_stats(stats_state).await;
-    });
+    health
+        .register_subsystem(Subsystem::MlDetection, ml_cb.clone())
+        .await;
+    health
+        .register_subsystem(Subsystem::SignatureMatching, sig_cb.clone())
+        .await;
+    health
+        .register_subsystem(Subsystem::EbpfMonitoring, ebpf_cb.clone())
+        .await;
+    health
+        .register_subsystem(Subsystem::Quarantine, quarantine_cb.clone())
+        .await;
 
-    info!("🚀 WinnCoreAV Daemon is running");
+    // Metrics registration (ignore errors for now).
+    let _ = register_metrics();
+
+    let shutdown = shutdown::ShutdownCoordinator::new(std::time::Duration::from_secs(30));
+    install_signal_handlers(shutdown.clone()).await;
+
     info!(
-        "   Watching paths: {:?}",
-        state.config.monitoring.watch_paths
+        version = env!("CARGO_PKG_VERSION"),
+        "WinnCore AV Daemon starting (hardened)"
     );
-    info!("   Auto-response: {}", state.config.response.enabled);
+    // Supplemental security tasks (container context + rootkit sweeps).
+    let _responder = start_security_tasks().await;
 
-    tokio::select! {
-        _ = &mut signals_task => info!("Signal handler stopped"),
-        _ = &mut monitoring_task => warn!("File monitoring task exited"),
-        _ = &mut stats_task => warn!("Stats reporter task exited"),
-    }
+    // Start behavioral pipeline (rules + alerts).
+    let behavioral_cfg = BehavioralConfig::default();
+    let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
+    let mut alert_rx = behavioral_runtime.alert_rx;
 
-    signals_handle.close();
-    monitoring_task.abort();
-    stats_task.abort();
-    signals_task.abort();
+    // Real procfs monitor to generate execution events.
+    info!("Starting process monitor...");
+    let process_monitor_cfg = ProcessMonitorConfig::default();
+    let _process_monitor_handle =
+        spawn_process_monitor(process_monitor_cfg, behavioral_runtime.event_tx.clone());
+    info!("Process monitor spawned");
 
-    cleanup(&config.daemon.pid_file)?;
-    info!("👋 WinnCoreAV Daemon stopped gracefully");
+    tokio::spawn(async move {
+        info!("Alert receiver started");
+        while let Some(alert) = alert_rx.recv().await {
+            log_alert(&alert);
+        }
+    });
 
-    Ok(())
-}
-
-async fn monitor_files(state: DaemonState) -> Result<()> {
-    info!("📂 Starting file monitoring...");
-
-    let (event_tx, mut rx) = mpsc::channel(state.config.limits.max_scan_queue);
-
-    let mut watcher = RecommendedWatcher::new(
-        {
-            let event_tx = event_tx.clone();
-            move |res: notify::Result<Event>| match res {
-                Ok(event) => {
-                    if let Err(send_err) = event_tx.blocking_send(event) {
-                        warn!("dropping file event: {send_err}");
-                    }
-                }
-                Err(err) => warn!("notify error: {err}"),
-            }
-        },
-        NotifyConfig::default(),
-    )?;
-    drop(event_tx);
-
-    for path in &state.config.monitoring.watch_paths {
-        let watch_path = Path::new(path);
-        if watch_path.exists() {
-            register_watch_path(
-                &mut watcher,
-                watch_path,
-                &state.config.monitoring.ignore_paths,
+    // Periodic health reporting.
+    let health_clone = health.clone();
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(30));
+        loop {
+            ticker.tick().await;
+            let report = health_clone.report().await;
+            info!(
+                status = ?report.status,
+                uptime = report.uptime_seconds,
+                degraded = ?report.degraded_subsystems,
+                "Health report"
             );
-        } else {
-            warn!("  ⚠️  Path does not exist: {}", watch_path.display());
         }
-    }
+    });
 
-    while let Some(event) = rx.recv().await {
-        if should_scan_event(&event, state.config.as_ref()) {
-            for path in event.paths.clone() {
-                let inner_state = state.clone();
-                tokio::spawn(async move {
-                    scan_file(path, inner_state).await;
-                });
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn should_scan_event(event: &Event, config: &DaemonConfig) -> bool {
-    if event.paths.is_empty() {
-        return false;
-    }
-
-    match event.kind {
-        EventKind::Create(_) => config.monitoring.scan_on_create,
-        EventKind::Modify(_) => config.monitoring.scan_on_modify,
-        EventKind::Access(_) => config.monitoring.scan_on_execute,
-        _ => false,
-    }
-}
-
-async fn scan_file(path: PathBuf, state: DaemonState) {
-    // Deduplicate scans - skip if scanned recently
-    let path_str = path.to_string_lossy().to_string();
-    if !state.dedup.should_scan(&path_str).await {
-        return; // Already scanned recently
-    }
-
-    if is_ignored(&path, &state.config.monitoring.ignore_paths) {
-        return;
-    }
-
-    if !path.is_file() {
-        return;
-    }
-
-    info!("🔍 Scanning: {:?}", path);
-
-    let scanner = state.scanner.clone();
-    let scan_future = scanner.scan_path(&path);
-    let timeout = Duration::from_secs(state.config.limits.scan_timeout_seconds);
-
-    match tokio::time::timeout(timeout, scan_future).await {
-        Ok(Ok(scan_result)) => {
-            {
-                let mut stats = state.stats.write().await;
-                stats.scans_today += 1;
-            }
-
-            let score = scan_result.heuristic_score.0;
-
-            if score >= state.config.thresholds.quarantine_threshold {
-                warn!("⚠️  THREAT DETECTED: {:?} (score: {:.3})", path, score);
-                {
-                    let mut stats = state.stats.write().await;
-                    stats.threats_found += 1;
-                }
-
-                if state.config.response.enabled {
-                    handle_threat(&path, score, state.clone()).await;
-                }
-            } else if score >= state.config.thresholds.alert_threshold {
-                warn!("⚠️  Suspicious file: {:?} (score: {:.3})", path, score);
-            } else {
-                info!("✅ Clean: {:?} (score: {:.3})", path, score);
-            }
-        }
-        Ok(Err(err)) => {
-            error!("❌ Scan failed for {:?}: {err}", path);
-        }
-        Err(_) => {
-            error!("⏱️  Scan timeout for {:?}", path);
-        }
-    }
-}
-
-async fn handle_threat(path: &Path, score: f32, state: DaemonState) {
-    let config = &state.config;
-
-    if score >= config.thresholds.quarantine_threshold && config.response.auto_quarantine {
-        info!("🔒 Quarantining: {:?}", path);
-        {
-            let mut stats = state.stats.write().await;
-            stats.files_quarantined += 1;
-        }
-    }
-
-    if score >= config.thresholds.kill_threshold && config.response.auto_kill {
-        info!("💀 Killing process for: {:?}", path);
-        {
-            let mut stats = state.stats.write().await;
-            stats.processes_killed += 1;
-        }
-    }
-
-    let mut response = state.response.write().await;
-    response.record_action();
-}
-
-async fn handle_signals(mut signals: Signals, _state: DaemonState) {
-    while let Some(signal) = signals.next().await {
-        match signal {
-            SIGTERM | SIGINT => {
-                info!("📡 Received shutdown signal");
+    let mut shutdown_rx = shutdown.subscribe();
+    loop {
+        tokio::select! {
+            _ = shutdown_rx.recv() => {
+                info!("Shutdown signal received");
                 break;
             }
-            SIGHUP => {
-                info!("📡 Received SIGHUP - configuration reload requested");
-            }
-            _ => {}
+            // TODO: main event loop and subsystems here.
         }
     }
-}
 
-async fn report_stats(state: DaemonState) {
-    let mut interval = tokio::time::interval(Duration::from_secs(60));
-
-    loop {
-        interval.tick().await;
-
-        let stats = state.stats.read().await;
-        let uptime = stats.uptime_start.elapsed().as_secs();
-
-        info!(
-            "📊 Stats - Uptime: {}s, Scans: {}, Threats: {}, Quarantined: {}, Killed: {}",
-            uptime,
-            stats.scans_today,
-            stats.threats_found,
-            stats.files_quarantined,
-            stats.processes_killed
-        );
-    }
-}
-
-fn write_pid_file(path: &str) -> Result<()> {
-    if let Some(parent) = Path::new(path).parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(path, std::process::id().to_string())?;
+    shutdown.wait_for_completion().await;
+    info!("Daemon shutdown complete");
     Ok(())
-}
-
-fn cleanup(pid_file: &str) -> Result<()> {
-    if Path::new(pid_file).exists() {
-        std::fs::remove_file(pid_file)?;
-    }
-    Ok(())
-}
-
-fn register_watch_path(watcher: &mut RecommendedWatcher, root: &Path, ignore_paths: &[String]) {
-    if is_ignored(root, ignore_paths) {
-        return;
-    }
-
-    match watcher.watch(root, RecursiveMode::Recursive) {
-        Ok(_) => info!("  ✅ Watching: {}", root.display()),
-        Err(err) => {
-            warn!("  ⚠️  Recursive watch failed for {}: {err}", root.display());
-
-            if !root.is_dir() {
-                return;
-            }
-
-            let mut queue = VecDeque::new();
-            queue.push_back(root.to_path_buf());
-
-            while let Some(dir) = queue.pop_front() {
-                if is_ignored(&dir, ignore_paths) {
-                    continue;
-                }
-
-                match watcher.watch(&dir, RecursiveMode::NonRecursive) {
-                    Ok(_) => info!("  ✅ Watching directory: {}", dir.display()),
-                    Err(e) => {
-                        warn!("  ⚠️  Failed to watch directory {}: {e}", dir.display());
-                        continue;
-                    }
-                }
-
-                if let Ok(entries) = fs::read_dir(&dir) {
-                    for entry in entries.flatten() {
-                        if let Ok(ft) = entry.file_type() {
-                            if ft.is_dir() {
-                                queue.push_back(entry.path());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn is_ignored(path: &Path, ignore_paths: &[String]) -> bool {
-    ignore_paths
-        .iter()
-        .map(Path::new)
-        .any(|ignore| path.starts_with(ignore))
 }

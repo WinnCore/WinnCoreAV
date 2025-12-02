@@ -1,0 +1,35 @@
+[Unit]
+Description=WinnCore AV Daemon (hardened)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/av-daemon
+WorkingDirectory=/usr/local/bin
+# Uncomment to drop namespaces only if your kernel/userns allows it; otherwise set to 1
+# Environment=WINNCORE_DISABLE_NAMESPACES=1
+# Enable structured logs if desired
+# Environment=WINNCORE_JSON_LOGS=1
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+NoNewPrivileges=yes
+LockPersonality=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+SystemCallErrorNumber=EPERM
+RuntimeDirectory=winncore
+StateDirectory=winncore
+LogsDirectory=winncore
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

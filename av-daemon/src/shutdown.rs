@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::{broadcast, watch, Mutex};
 use tokio::time::timeout;
 use tracing::{error, info, warn};
@@ -131,9 +132,27 @@ impl ShutdownCoordinator {
 pub async fn install_signal_handlers(coordinator: Arc<ShutdownCoordinator>) {
     use tokio::signal::unix::{signal, SignalKind};
 
-    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler");
-    let mut sigint = signal(SignalKind::interrupt()).expect("Failed to install SIGINT handler");
-    let mut sigquit = signal(SignalKind::quit()).expect("Failed to install SIGQUIT handler");
+    let mut sigterm = match signal(SignalKind::terminate()) {
+        Ok(sig) => sig,
+        Err(e) => {
+            error!(error = %e, "Failed to install SIGTERM handler");
+            return;
+        }
+    };
+    let mut sigint = match signal(SignalKind::interrupt()) {
+        Ok(sig) => sig,
+        Err(e) => {
+            error!(error = %e, "Failed to install SIGINT handler");
+            return;
+        }
+    };
+    let mut sigquit = match signal(SignalKind::quit()) {
+        Ok(sig) => sig,
+        Err(e) => {
+            error!(error = %e, "Failed to install SIGQUIT handler");
+            return;
+        }
+    };
 
     let coordinator_clone = coordinator.clone();
 
@@ -148,6 +167,14 @@ pub async fn install_signal_handlers(coordinator: Arc<ShutdownCoordinator>) {
             _ = sigquit.recv() => {
                 info!("Received SIGQUIT");
             }
+        }
+
+        // Flush async stdout/stderr before triggering shutdown to preserve logs.
+        if let Err(e) = tokio::io::stdout().flush().await {
+            warn!(error = %e, "Failed to flush stdout during shutdown");
+        }
+        if let Err(e) = tokio::io::stderr().flush().await {
+            warn!(error = %e, "Failed to flush stderr during shutdown");
         }
 
         coordinator_clone.shutdown().await;

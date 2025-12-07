@@ -45,3 +45,4 @@ parking_lot = "0.12"
 prometheus = "0.13"
 lazy_static = "1.4"
 hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
+sd-notify = "0.4"

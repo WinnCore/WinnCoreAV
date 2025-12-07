@@ -1,210 +1,150 @@
-# WinnCoreAV 🛡️
+# WinnCoreAV
 
-[![CI](https://github.com/WinnCore/WinnCoreAV/workflows/CI/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions)
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Security](https://github.com/WinnCore/WinnCoreAV/workflows/Security%20Audit/badge.svg)](https://github.com/WinnCore/WinnCoreAV/security)
-[![ARM64](https://img.shields.io/badge/platform-ARM64-red.svg)](https://github.com/WinnCore/WinnCoreAV)
-[![Lines of Code](https://tokei.rs/b1/github/WinnCore/WinnCoreAV)](https://github.com/WinnCore/WinnCoreAV)
+ARM64-native endpoint detection and response for Linux. Built in Rust.
 
+## What this is
 
-## 🎥 Investor Demo
+An EDR that runs on ARM64 Linux systems - Graviton instances, Apple Silicon, Snapdragon laptops, Raspberry Pi. Most security tools treat ARM as an afterthought. This one doesn't.
 
-![Demo Preview](assets/demo_preview.gif)
+## Current state
 
-*30-second preview - [Run full 5-7 minute demo](demos/investor_demo.sh) or [view recording](demos/investor_demo.cast)*
+**Working:**
+- Process monitoring via `/proc` with behavioral analysis
+- 50 behavioral detection rules (regex-based, case-insensitive)
+- ML inference pipeline (LightGBM/ONNX)
+- YARA signature matching (3 rules currently)
+- Quarantine with AES-256 encryption
+- Response actions (kill process, quarantine file)
+- Systemd integration with watchdog
+- Prometheus metrics endpoint
 
-**Comprehensive investor presentation** covering:
-- Technical architecture & ARM64 optimization
-- Performance benchmarks (honest comparisons)
-- Business model & revenue projections  
-- Roadmap & what we need to succeed
-- Contact: zw@winncore.com
+**In progress:**
+- eBPF-based monitoring (kernel hooks exist, integration WIP)
+- Detection rate improvements (currently ~50%, targeting 90%+)
+- False positive tuning
+- Central management console
 
-**[📁 All Demo Files](https://github.com/WinnCore/WinnCoreAV/tree/main/demos)**
+**Not started:**
+- SIEM integration API
+- Threat intel feed integration
+- Multi-tenancy
 
----
+## Architecture
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         av-daemon                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ProcessMonitor│─▶│  Behavioral  │─▶│   ResponseEngine     │  │
+│  │  (/proc)     │  │   Pipeline   │  │ (kill/quarantine)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│         │                 │                                      │
+│         ▼                 ▼                                      │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │   Heuristics │  │  RuleEngine  │                             │
+│  │   Analyzer   │  │  (RegexSet)  │                             │
+│  └──────────────┘  └──────────────┘                             │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│  av-behavioral  │  │  av-ml-detector │  │  av-signatures  │
+│  (50 rules)     │  │  (ONNX/LightGBM)│  │  (YARA)         │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
 
-## Quick Start
+27 crates, ~23k lines of Rust.
 
+## Building
 ```bash
-# Build
+# Requires Rust 1.70+
 cargo build --release
 
-# Run daemon (requires /proc access)
-sudo ./target/release/av-daemon &
+# Run the daemon (needs root for /proc access)
+sudo ./target/release/av-daemon
 
-# Run the MITRE-aligned attack simulation
-./target/release/attack-sim
-
-# View alerts
-cat /var/log/winncore/alerts.json | jq
+# Run in debug mode
+WINNCORE_DEBUG=1 RUST_LOG=info cargo run -p av-daemon
 ```
 
-### Detection Coverage (Current)
+## Configuration
 
-| MITRE Tactic         | Coverage |
-|----------------------|----------|
-| Execution            | 100%     |
-| Persistence          | 100%     |
-| Defense Evasion      | 100%     |
-| Credential Access    | 100%     |
-| Discovery            | 100%     |
-| Command & Control    | 100%     |
-| Impact               | 100%     |
+Edit `config/daemon.toml`:
+```toml
+[response]
+enabled = true
+auto_quarantine = true
+auto_kill_critical = false
+quarantine_dir = "/var/lib/winncore/quarantine"
 
-**Overall:** ~95.5% detection rate on the bundled attack simulation suite.
-
-
-
-
-
-
-
-
-**ARM64-Native Malware Detection - Learning Project**
-
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-learning%20project-yellow.svg)]()
-
-> Learning modern AV/EDR concepts by building an ARM64-native malware detector with machine learning.
-
-## What's Actually Implemented
-
-### ✅ Complete: ML Detection Pipeline
-- **Feature extraction** from ARM64 ELF binaries (14 features)
-- **LightGBM model** trained on 2,631 samples → ONNX runtime
-- **Model governance**: checksums, manifests, version control
-- **Basic XAI**: feature importance attribution
-- **CLI tools**: model verify, model test
-- Clean, modular Rust code in `av-ml-detector` crate
-
-**This part works well** and demonstrates ML engineering fundamentals.
-
-### 🚧 Partial: Core Scanning Engine
-- Basic scanning pipeline structure exists (`av-core`)
-- YARA-X integration is **stubbed** (loads rules, but limited actual scanning)
-- IoC cache is **basic** (hash lookup structure, minimal testing)
-- eBPF monitoring is **framework only** (not production detections)
-- Configuration system works (TOML governance)
-
-**This shows architectural understanding** but needs more implementation work.
-
-### ❌ Not Yet: Production Features
-- Real-time file monitoring
-- Behavioral detection patterns
-- Comprehensive threat intelligence feeds
-- Full operator CLI (`scan-dir` command)
-- Real-world malware validation
-- Enterprise-scale testing
-
-## Why This Project Exists
-
-**Learning objectives:**
-1. Understand ML-based malware detection
-2. Learn Rust systems programming
-3. Explore ARM64 platform opportunities
-4. Build portfolio demonstrating potential
-
-**Market context:**
-- ARM64 lacks native security tooling
-- Open-source AV lags commercial offerings
-- Good learning opportunity in underserved niche
-
-## What This Demonstrates
-
-**Technical Skills:**
-- ML pipeline (feature engineering → training → ONNX deployment)
-- Rust systems programming (async, error handling, testing)
-- ARM64 binary analysis (ELF parsing)
-- Software architecture (multi-crate workspace, clean APIs)
-- Modern development (AI-assisted coding, comprehensive testing)
-
-**Honest Self-Assessment:**
-- Strong on **concepts and architecture** ✅
-- Early-stage on **complete implementation** 🚧
-- Learning **quickly with good fundamentals** 🚀
-
-## Tech Stack
-
-**Core:**
-- Rust (memory-safe, high-performance)
-- ONNX Runtime (ML inference)
-- LightGBM (malware classification)
-
-**Partial/Planned:**
-- YARA-X (signature matching)
-- eBPF (behavioral monitoring)
-- MITRE ATT&CK (threat taxonomy)
-
-## Repository Structure
-```
-├── av-ml-detector/    # ✅ Complete: ML inference pipeline
-├── av-core/           # 🚧 Partial: Scanning engine framework  
-├── av-cli/            # 🚧 Partial: Basic CLI (verify/test only)
-├── tools/
-│   └── ml_pipeline/   # ✅ Complete: Training scripts
-├── models/            # ✅ Complete: ONNX models with manifests
-└── docs/              # 🚧 Partial: Architecture documentation
+[metrics]
+enabled = true
+port = 9090
 ```
 
-## Development Approach
+## Testing
+```bash
+# Build and run the attack simulator
+cargo build -p av-attack-sim
+./target/debug/av-attack-sim
 
-**Built by WinnCore** with AI-accelerated development (Claude/Codex).
+# Check alerts
+cat /var/log/winncore/alerts.json
+```
 
-- **Human:** Architecture, design, research, testing, validation
-- **AI:** Code generation, boilerplate, test scaffolding
-- **Result:** Fast learning while maintaining code understanding
+## Project structure
+```
+av-daemon/          Main daemon process
+av-behavioral/      Behavioral rules engine (RegexSet)
+av-ml-detector/     ML inference (6 ONNX models)
+av-signatures/      YARA integration
+av-quarantine/      Encrypted file quarantine
+av-response/        Threat response actions
+av-ebpf*/           eBPF probes and loader (WIP)
+av-core/            Shared types and utilities
+av-cli/             Command-line interface
+```
 
-Using AI tools effectively is itself a valuable skill.
+## Detection rules
 
-## Current Limitations
+Rules live in `av-behavioral/rules/linux_behavioral.json`. Format:
+```json
+{
+  "id": "crypto_miner_detection",
+  "name": "Cryptocurrency Miner",
+  "severity": "High",
+  "technique": "T1496",
+  "tactic": "Impact",
+  "condition": {
+    "type": "process",
+    "cmdline_contains_any": ["xmrig", "stratum+tcp", "cryptonight"]
+  }
+}
+```
 
-Be honest about what this is:
-- **Small dataset** (2,631 training samples)
-- **Likely overfit** to test set (need more diverse data)
-- **Partial implementation** (ML works, rest is framework)
-- **Not production-ready** (learning project, not deployment)
-- **ARM64 Linux only** (no multi-platform support yet)
+Rules are case-insensitive regex patterns matched against process command lines.
 
-## What's Next
+## Why ARM64
 
-**Immediate priorities:**
-1. Complete `scan-dir` CLI command
-2. Finish YARA integration (actual scanning, not just loading)
-3. Add real behavioral detection patterns
-4. Expand dataset with diverse samples
-5. Comprehensive testing and validation
+- AWS Graviton is 40% cheaper than x86 for same performance
+- Apple Silicon Macs need native security tools
+- Qualcomm Snapdragon X laptops are shipping
+- Most EDRs have janky ARM support or none at all
 
-**Long-term vision:**
-- Real-world malware validation
-- Production-grade performance
-- Advanced XAI (SHAP/LIME)
-- Multi-platform support
+## Known issues
 
-## For Employers/Recruiters
-
-This project shows:
-- **Learning ability** - picked up security, ML, Rust quickly
-- **Architectural thinking** - understands modern AV/EDR concepts
-- **Clean code** - modular, tested, documented
-- **Honest communication** - accurate self-assessment
-- **Modern tooling** - effective use of AI for acceleration
-
-It's a **portfolio piece demonstrating potential**, not a finished product.
-
-## Documentation
-
-- [ML Pipeline](docs/ML_ENGINEERING.md) - Feature extraction, training, deployment
-- [Architecture](docs/) - System design and component overview
+- Some behavioral rules trigger false positives on build tools (cargo, rustc)
+- Detection rate needs improvement for obfuscated commands
+- eBPF integration incomplete
+- No GUI yet
 
 ## License
 
 Apache 2.0
 
----
+## Contributing
 
-**Built by [WinnCore](https://github.com/WinnCore) 🚀**
-
-_Learning ARM64 security engineering - honest about current state, excited about future potential_
+Open an issue first. PRs welcome for:
+- New detection rules
+- ARM64 performance optimizations
+- eBPF probe development
+- Documentation

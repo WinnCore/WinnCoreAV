@@ -1,56 +1,14 @@
-# Rust
 /target/
 **/*.rs.bk
-*.pdb
-
-# IDE
-.vscode/
-.idea/
+Cargo.lock
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Test outputs
-test_screenshots/
-*.log
-build.log
-*.txt
-
-# Session documentation (local only)
-CLAUDE_SESSION_SUMMARY.md
-check_ci_status.sh
-TELL_CLAUDE.txt
-
-# AV specific
-/quarantine/
-*.yar
-!signatures/yara/*.yar
-
-# WinnCore cleanup defaults
-/target/
-__pycache__/
-*.py[cod]
-*.pyo
-.mypy_cache/
-.pytest_cache/
-node_modules/
-.DS_Store
-Thumbs.db
 .idea/
 .vscode/
-*.swp
-*~
-*.bak
-*.orig
-
-# Local test run artifacts
-test_output_*
-# Local runtime / demo artifacts
-alerts.json
-*.cast
-# Local artifacts
-attack_sim_results.json
+*.log
+/quarantine/
+*.quarantine
+.env
+test_output_*/

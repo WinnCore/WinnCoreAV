@@ -40,6 +40,7 @@ pub struct BehavioralRuntime {
 
 #[derive(Debug, Clone)]
 pub struct BehavioralConfig {
+    pub response: crate::config::ResponseConfig,
     pub external_rules_dir: Option<PathBuf>,
     pub alert_log_path: PathBuf,
 }
@@ -47,6 +48,7 @@ pub struct BehavioralConfig {
 impl Default for BehavioralConfig {
     fn default() -> Self {
         Self {
+            response: crate::config::ResponseConfig::default(),
             external_rules_dir: Some(PathBuf::from("/etc/winncore/rules")),
             alert_log_path: PathBuf::from(DEFAULT_ALERT_LOG),
         }
@@ -69,7 +71,7 @@ impl BehavioralPipeline {
         Ok(BehavioralPipeline {
             engine,
             heuristics: HeuristicAnalyzer::new(),
-            response: ResponseEngine::new(Default::default()),
+            response: ResponseEngine::new(config.response.clone()),
             config,
         })
     }

@@ -1,3 +1,16 @@
+# WinnCoreAV Daemon Configuration
+
 [metrics]
 enabled = true
 port = 9090
+
+[response]
+enabled = true
+auto_kill_critical = false
+auto_quarantine = true
+quarantine_threshold = 0.85
+quarantine_dir = "/var/lib/winncore/quarantine"
+
+[behavioral]
+external_rules_dir = "/etc/winncore/rules"
+alert_log_path = "/var/log/winncore/alerts.json"

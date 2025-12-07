@@ -1,52 +1,56 @@
-// Threat response actions
-// Automated response to detected threats
+//! Threat response actions - quarantine, kill, alert
 
+use crate::config::ResponseConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{error, info, warn};
 
-/// Response action types
 #[derive(Debug, Clone, PartialEq)]
 pub enum ResponseAction {
-    Log,        // Just log the alert
-    Alert,      // Alert + notification
-    Kill,       // Terminate the process
-    Quarantine, // Move file to quarantine
-    Block,      // Block network access
+    Log,
+    Alert,
+    Kill,
+    Quarantine,
+    Block,
 }
 
-/// Configuration for response engine
-pub struct ResponseConfig {
-    pub enabled: bool,
-    pub auto_kill_critical: bool,
-    pub auto_quarantine: bool,
-    pub quarantine_dir: PathBuf,
-}
+/// Paths that should never be quarantined (build tools, system binaries)
+const EXCLUDED_PATHS: &[&str] = &[
+    "cargo",
+    "rustc",
+    "rustup",
+    "build-script",
+    "cc",
+    "ld",
+    "/usr/bin",
+    "/usr/lib",
+    "/.cargo/",
+    "/.rustup/",
+    "/proc/",
+];
 
-impl Default for ResponseConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            auto_kill_critical: false, // Safe default
-            auto_quarantine: false,    // Safe default
-            quarantine_dir: PathBuf::from("/var/lib/winncore/quarantine"),
-        }
-    }
-}
-
-/// Response engine for automated threat response
 pub struct ResponseEngine {
     config: ResponseConfig,
 }
 
 impl ResponseEngine {
     pub fn new(config: ResponseConfig) -> Self {
+        info!(
+            enabled = config.enabled,
+            auto_quarantine = config.auto_quarantine,
+            auto_kill = config.auto_kill_critical,
+            quarantine_dir = %config.quarantine_dir.display(),
+            "ResponseEngine initialized"
+        );
         Self { config }
     }
 
-    /// Determine appropriate response based on severity
     pub fn determine_response(&self, severity: &str) -> ResponseAction {
+        if !self.config.enabled {
+            return ResponseAction::Log;
+        }
+
         match severity.to_lowercase().as_str() {
             "critical" => {
                 if self.config.auto_kill_critical {
@@ -55,87 +59,102 @@ impl ResponseEngine {
                     ResponseAction::Alert
                 }
             }
-            "high" => ResponseAction::Alert,
-            "medium" => ResponseAction::Log,
+            "high" => {
+                if self.config.auto_quarantine {
+                    ResponseAction::Quarantine
+                } else {
+                    ResponseAction::Alert
+                }
+            }
+            "medium" => ResponseAction::Alert,
             "low" => ResponseAction::Log,
             _ => ResponseAction::Log,
         }
     }
 
-    /// Kill a process by PID
     pub fn kill_process(&self, pid: u32) -> Result<(), String> {
         if !self.config.enabled {
-            info!("Response disabled - would kill pid {}", pid);
+            info!(pid = pid, "Response disabled - would kill");
             return Ok(());
         }
 
-        warn!("Killing malicious process: pid={}", pid);
-
-        // Try graceful termination first
-        let term_result = Command::new("kill")
-            .args(["-15", &pid.to_string()])
-            .output();
-
-        if let Ok(output) = term_result {
-            if output.status.success() {
-                info!("Process {} terminated with SIGTERM", pid);
-                return Ok(());
-            }
+        if pid <= 1 {
+            return Err("Refusing to kill PID 0 or 1".to_string());
         }
 
-        // Force kill
-        let kill_result = Command::new("kill")
-            .args(["-9", &pid.to_string()])
-            .output()
-            .map_err(|e| format!("Failed to kill: {}", e))?;
+        warn!(pid = pid, "KILLING malicious process");
 
-        if kill_result.status.success() {
-            info!("Process {} killed with SIGKILL", pid);
-            Ok(())
-        } else {
-            Err(format!("Failed to kill pid {}", pid))
+        // SIGTERM first
+        let _ = Command::new("kill").args(["-15", &pid.to_string()]).output();
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // SIGKILL if still alive
+        match Command::new("kill").args(["-9", &pid.to_string()]).output() {
+            Ok(output) if output.status.success() => {
+                info!(pid = pid, "Process killed");
+                Ok(())
+            }
+            _ => Err(format!("Failed to kill pid {}", pid)),
         }
     }
 
-    /// Quarantine a suspicious file
     pub fn quarantine_file(&self, path: &Path) -> Result<PathBuf, String> {
-        if !self.config.enabled || !self.config.auto_quarantine {
-            info!("Would quarantine: {:?}", path);
+        if !self.config.enabled {
+            info!(path = %path.display(), "Response disabled - would quarantine");
+            return Ok(PathBuf::new());
+        }
+
+        if !self.config.auto_quarantine {
+            info!(path = %path.display(), "Auto-quarantine disabled - skipping");
             return Ok(PathBuf::new());
         }
 
         if !path.exists() {
-            return Err("File does not exist".to_string());
+            return Err(format!("File not found: {}", path.display()));
         }
 
-        // Ensure quarantine directory exists
+        // Create quarantine dir
         fs::create_dir_all(&self.config.quarantine_dir)
             .map_err(|e| format!("Failed to create quarantine dir: {}", e))?;
 
-        // Generate quarantine path
-        let filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&self.config.quarantine_dir, fs::Permissions::from_mode(0o700));
+        }
+
+        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
         let quarantine_name = format!("{}_{}.quarantine", timestamp, filename);
-        let quarantine_path = self.config.quarantine_dir.join(quarantine_name);
+        let quarantine_path = self.config.quarantine_dir.join(&quarantine_name);
 
-        // Move file
-        fs::rename(path, &quarantine_path).map_err(|e| format!("Failed to quarantine: {}", e))?;
+        fs::rename(path, &quarantine_path)
+            .map_err(|e| format!("Quarantine failed: {}", e))?;
 
-        warn!("Quarantined {:?} -> {:?}", path, quarantine_path);
+        warn!(
+            original = %path.display(),
+            quarantined = %quarantine_path.display(),
+            "FILE QUARANTINED"
+        );
+
         Ok(quarantine_path)
     }
 
-    /// Execute response for an alert
     pub fn respond(&self, severity: &str, pid: u32, exe_path: Option<&Path>) {
         let action = self.determine_response(severity);
+
+        info!(
+            severity = severity,
+            pid = pid,
+            action = ?action,
+            exe = exe_path.map(|p| p.display().to_string()).unwrap_or_default(),
+            "Response action triggered"
+        );
 
         match action {
             ResponseAction::Kill => {
                 if let Err(e) = self.kill_process(pid) {
-                    error!("Kill failed: {}", e);
+                    error!(error = %e, "Kill failed");
                 }
                 if let Some(path) = exe_path {
                     let _ = self.quarantine_file(path);
@@ -143,26 +162,31 @@ impl ResponseEngine {
             }
             ResponseAction::Quarantine => {
                 if let Some(path) = exe_path {
-                    let _ = self.quarantine_file(path);
+                    if let Err(e) = self.quarantine_file(path) {
+                        error!(error = %e, "Quarantine failed");
+                    }
+                } else {
+                    // Try to get exe path from /proc
+                    let exe_link = format!("/proc/{}/exe", pid);
+                    if let Ok(real_path) = std::fs::read_link(&exe_link) {
+                        if let Err(e) = self.quarantine_file(&real_path) {
+                            error!(error = %e, "Quarantine from /proc failed");
+                        }
+                    } else {
+                        warn!(pid = pid, "Cannot quarantine - no exe path available");
+                    }
                 }
             }
             ResponseAction::Alert => {
-                warn!("ALERT: Critical threat detected - pid={}", pid);
+                warn!(severity = severity, pid = pid, "🚨 ALERT: Threat requires attention");
             }
             ResponseAction::Block => {
-                info!("Network block requested for pid={}", pid);
-                // Network blocking would require iptables/nftables
+                info!(pid = pid, "Network block not yet implemented");
             }
             ResponseAction::Log => {
-                info!("Threat logged: pid={}", pid);
+                info!(pid = pid, severity = severity, "Threat logged");
             }
         }
-    }
-
-    /// Enable/disable auto-kill for critical threats
-    pub fn set_auto_kill(&mut self, enabled: bool) {
-        self.config.auto_kill_critical = enabled;
-        info!("Auto-kill critical: {}", enabled);
     }
 }
 

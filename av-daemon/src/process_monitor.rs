@@ -9,13 +9,13 @@
 //! supported kernels (5.8+).
 
 use std::collections::HashSet;
-use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
+use tokio::fs;
 use tokio::sync::mpsc;
 use tokio::time::interval;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use av_ebpf_common::{ProcessExecEvent, MAX_ARGS_LEN, MAX_COMM_LEN, MAX_PATH_LEN};
 
@@ -60,7 +60,9 @@ impl ProcessMonitor {
 
         // Initial scan
         if !self.config.monitor_existing {
-            self.scan_existing_pids();
+            if let Err(e) = self.scan_existing_pids().await {
+                warn!(error = %e, "Failed to scan existing PIDs at startup");
+            }
             info!("Initialized with {} existing PIDs", self.seen_pids.len());
         }
 
@@ -77,23 +79,33 @@ impl ProcessMonitor {
         }
     }
 
-    fn scan_existing_pids(&mut self) {
-        if let Ok(entries) = fs::read_dir("/proc") {
-            for entry in entries.flatten() {
-                if let Some(pid) = self.parse_pid(&entry) {
-                    self.seen_pids.insert(pid);
-                }
+    async fn scan_existing_pids(&mut self) -> std::io::Result<()> {
+        let mut entries = fs::read_dir("/proc").await?;
+        while let Some(entry) = entries.next_entry().await? {
+            if let Some(pid) = self.parse_pid(&entry) {
+                self.seen_pids.insert(pid);
             }
         }
+        Ok(())
     }
 
     async fn poll_new_processes(&mut self) -> usize {
-        let Ok(entries) = fs::read_dir("/proc") else {
-            return 0;
+        let mut entries = match fs::read_dir("/proc").await {
+            Ok(entries) => entries,
+            Err(e) => {
+                error!(error = %e, "Failed to read /proc");
+                return 0;
+            }
         };
 
         let mut count = 0;
-        for entry in entries.flatten() {
+        while let Some(entry) = match entries.next_entry().await {
+            Ok(opt) => opt,
+            Err(e) => {
+                error!(error = %e, "Error iterating /proc entries");
+                None
+            }
+        } {
             let Some(pid) = self.parse_pid(&entry) else {
                 continue;
             };
@@ -104,7 +116,7 @@ impl ProcessMonitor {
 
             self.seen_pids.insert(pid);
 
-            if let Some(event) = self.collect_process_info(pid) {
+            if let Some(event) = self.collect_process_info(pid).await {
                 let comm = String::from_utf8_lossy(&event.comm)
                     .trim_matches('\0')
                     .to_string();
@@ -126,7 +138,9 @@ impl ProcessMonitor {
 
         // Cleanup dead PIDs periodically
         if self.seen_pids.len() > 5000 {
-            self.cleanup_dead_pids();
+            if let Err(e) = self.cleanup_dead_pids().await {
+                warn!(error = %e, "Failed to cleanup dead PIDs");
+            }
         }
 
         count
@@ -136,28 +150,30 @@ impl ProcessMonitor {
         entry.file_name().to_str()?.parse().ok()
     }
 
-    fn collect_process_info(&self, pid: u32) -> Option<ProcessExecEvent> {
+    async fn collect_process_info(&self, pid: u32) -> Option<ProcessExecEvent> {
         let proc_path = format!("/proc/{}", pid);
         let path = Path::new(&proc_path);
 
-        if !path.exists() {
+        if fs::metadata(path).await.is_err() {
             return None;
         }
 
         let comm_str = fs::read_to_string(path.join("comm"))
+            .await
             .unwrap_or_default()
             .trim()
             .to_string();
 
-        let cmdline_bytes = fs::read(path.join("cmdline")).unwrap_or_default();
+        let cmdline_bytes = fs::read(path.join("cmdline")).await.unwrap_or_default();
         let cmdline_str = String::from_utf8_lossy(&cmdline_bytes)
             .replace('\0', " ")
             .trim()
             .to_string();
 
-        let (ppid, uid, gid) = self.parse_stat(pid).unwrap_or((0, 0, 0));
+        let (ppid, uid, gid) = self.parse_stat(pid).await.unwrap_or((0, 0, 0));
 
         let exe_path = fs::read_link(path.join("exe"))
+            .await
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
 
@@ -192,14 +208,18 @@ impl ProcessMonitor {
         Some(event)
     }
 
-    fn parse_stat(&self, pid: u32) -> Option<(u32, u32, u32)> {
-        let stat = fs::read_to_string(format!("/proc/{}/stat", pid)).ok()?;
+    async fn parse_stat(&self, pid: u32) -> Option<(u32, u32, u32)> {
+        let stat = fs::read_to_string(format!("/proc/{}/stat", pid))
+            .await
+            .ok()?;
         let close_paren = stat.rfind(')')?;
         let after_comm = &stat[close_paren + 2..];
         let fields: Vec<&str> = after_comm.split_whitespace().collect();
         let ppid: u32 = fields.get(1)?.parse().ok()?;
 
-        let status = fs::read_to_string(format!("/proc/{}/status", pid)).ok()?;
+        let status = fs::read_to_string(format!("/proc/{}/status", pid))
+            .await
+            .ok()?;
         let mut uid = 0u32;
         let mut gid = 0u32;
         for line in status.lines() {
@@ -213,9 +233,16 @@ impl ProcessMonitor {
         Some((ppid, uid, gid))
     }
 
-    fn cleanup_dead_pids(&mut self) {
-        self.seen_pids
-            .retain(|pid| Path::new(&format!("/proc/{}", pid)).exists());
+    async fn cleanup_dead_pids(&mut self) -> std::io::Result<()> {
+        let mut alive = Vec::with_capacity(self.seen_pids.len());
+        for pid in &self.seen_pids {
+            let path = format!("/proc/{}", pid);
+            if fs::metadata(path).await.is_ok() {
+                alive.push(*pid);
+            }
+        }
+        self.seen_pids = alive.into_iter().collect();
+        Ok(())
     }
 }
 

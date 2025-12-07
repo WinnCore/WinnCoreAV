@@ -13,7 +13,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use tracing::info;
+use sd_notify::NotifyState;
+use tokio::io::{stderr, stdout, AsyncWriteExt};
+use tracing::{info, warn};
 
 mod aslr_verify;
 mod behavioral_pipeline;
@@ -46,6 +48,9 @@ use shutdown::install_signal_handlers;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load daemon configuration
+    let daemon_cfg = crate::config::DaemonConfig::load_or_default();
+
     let mut harden_cfg = if std::env::var("WINNCORE_DEBUG").is_ok() {
         HardeningConfig::development()
     } else {
@@ -87,6 +92,16 @@ async fn main() -> Result<()> {
     let _ = register_metrics();
 
     let shutdown = shutdown::ShutdownCoordinator::new(std::time::Duration::from_secs(30));
+    shutdown
+        .register_handler("flush_logs", 100, || async {
+            if let Err(e) = stdout().flush().await {
+                warn!(error = %e, "Failed to flush stdout during shutdown");
+            }
+            if let Err(e) = stderr().flush().await {
+                warn!(error = %e, "Failed to flush stderr during shutdown");
+            }
+        })
+        .await;
     install_signal_handlers(shutdown.clone()).await;
 
     info!(
@@ -97,7 +112,10 @@ async fn main() -> Result<()> {
     let _responder = start_security_tasks().await;
 
     // Start behavioral pipeline (rules + alerts).
-    let behavioral_cfg = BehavioralConfig::default();
+    let behavioral_cfg = BehavioralConfig {
+        response: daemon_cfg.response.clone(),
+        ..BehavioralConfig::default()
+    };
     let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
     let mut alert_rx = behavioral_runtime.alert_rx;
 
@@ -114,6 +132,12 @@ async fn main() -> Result<()> {
             log_alert(&alert);
         }
     });
+
+    if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
+        warn!(error = %e, "Failed to send systemd READY=1");
+    } else {
+        info!("Systemd notified: READY=1");
+    }
 
     // Periodic health reporting.
     let health_clone = health.clone();

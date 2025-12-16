@@ -26,7 +26,7 @@ pub fn is_pac_supported() -> bool {
         // Check for any PAC capability
         const HWCAP_PACA: u64 = 1 << 30;
         const HWCAP_PACG: u64 = 1 << 31;
-        return hwcap & (HWCAP_PACA | HWCAP_PACG) != 0;
+        hwcap & (HWCAP_PACA | HWCAP_PACG) != 0
     }
 
     #[cfg(not(target_arch = "aarch64"))]

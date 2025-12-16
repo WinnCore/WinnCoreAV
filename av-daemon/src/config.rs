@@ -4,7 +4,9 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
-#[derive(Debug, Clone, Deserialize)]
+use crate::siem::SiemConfig;
+
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct DaemonConfig {
     #[serde(default)]
     pub metrics: MetricsConfig,
@@ -12,16 +14,8 @@ pub struct DaemonConfig {
     pub response: ResponseConfig,
     #[serde(default)]
     pub behavioral: BehavioralFileConfig,
-}
-
-impl Default for DaemonConfig {
-    fn default() -> Self {
-        Self {
-            metrics: MetricsConfig::default(),
-            response: ResponseConfig::default(),
-            behavioral: BehavioralFileConfig::default(),
-        }
-    }
+    #[serde(default)]
+    pub siem: SiemConfig,
 }
 
 impl DaemonConfig {
@@ -70,12 +64,19 @@ pub struct MetricsConfig {
     pub port: u16,
 }
 
-fn default_true() -> bool { true }
-fn default_metrics_port() -> u16 { 9090 }
+fn default_true() -> bool {
+    true
+}
+fn default_metrics_port() -> u16 {
+    9090
+}
 
 impl Default for MetricsConfig {
     fn default() -> Self {
-        Self { enabled: true, port: 9090 }
+        Self {
+            enabled: true,
+            port: 9090,
+        }
     }
 }
 
@@ -87,21 +88,26 @@ pub struct ResponseConfig {
     pub auto_kill_critical: bool,
     #[serde(default = "default_true")]
     pub auto_quarantine: bool,
+    #[allow(dead_code)]
     #[serde(default = "default_threshold")]
     pub quarantine_threshold: f32,
     #[serde(default = "default_quarantine_dir")]
     pub quarantine_dir: PathBuf,
 }
 
-fn default_threshold() -> f32 { 0.85 }
-fn default_quarantine_dir() -> PathBuf { PathBuf::from("/var/lib/winncore/quarantine") }
+fn default_threshold() -> f32 {
+    0.85
+}
+fn default_quarantine_dir() -> PathBuf {
+    PathBuf::from("/var/lib/winncore/quarantine")
+}
 
 impl Default for ResponseConfig {
     fn default() -> Self {
         Self {
             enabled: true,
             auto_kill_critical: false,
-            auto_quarantine: true,  // KEY FIX: was false
+            auto_quarantine: true, // KEY FIX: was false
             quarantine_threshold: 0.85,
             quarantine_dir: PathBuf::from("/var/lib/winncore/quarantine"),
         }
@@ -115,7 +121,9 @@ pub struct BehavioralFileConfig {
     pub alert_log_path: PathBuf,
 }
 
-fn default_alert_log() -> PathBuf { PathBuf::from("/var/log/winncore/alerts.json") }
+fn default_alert_log() -> PathBuf {
+    PathBuf::from("/var/log/winncore/alerts.json")
+}
 
 impl Default for BehavioralFileConfig {
     fn default() -> Self {

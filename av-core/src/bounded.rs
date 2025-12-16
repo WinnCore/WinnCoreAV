@@ -176,19 +176,20 @@ impl<K: Clone + Eq + std::hash::Hash, V> BoundedMap<K, V> {
         let mut inner = self.inner.write();
         self.stats.total_inserted.fetch_add(1, Ordering::Relaxed);
 
-        if inner.map.contains_key(&key) {
-            return inner.map.insert(key, value);
+        let prev = inner.map.insert(key.clone(), value);
+        if prev.is_some() {
+            return prev;
         }
 
-        if inner.map.len() >= self.capacity {
+        if inner.map.len() > self.capacity {
             if let Some(oldest_key) = inner.insertion_order.pop_front() {
                 inner.map.remove(&oldest_key);
                 self.stats.total_evicted.fetch_add(1, Ordering::Relaxed);
             }
         }
 
-        inner.insertion_order.push_back(key.clone());
-        inner.map.insert(key, value)
+        inner.insertion_order.push_back(key);
+        None
     }
 
     /// Get a value by key

@@ -88,7 +88,7 @@ impl AccessRights {
         }
     }
 
-    fn to_bits(&self) -> u64 {
+    fn to_bits(self) -> u64 {
         const EXEC: u64 = 1 << 0;
         const WRITE_FILE: u64 = 1 << 1;
         const READ_FILE: u64 = 1 << 2;

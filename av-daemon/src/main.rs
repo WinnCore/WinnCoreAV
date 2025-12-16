@@ -10,6 +10,8 @@
 //!
 //! Performance targets: <5% CPU, <50MB RAM, <500ms detection latency
 
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -34,6 +36,7 @@ mod process_monitor;
 mod response;
 mod security;
 mod shutdown;
+mod siem;
 mod watchdog;
 
 use behavioral_pipeline::{log_alert, start_behavioral_pipeline, BehavioralConfig};
@@ -45,6 +48,7 @@ use metrics::register_metrics;
 use process_monitor::{spawn_process_monitor, ProcessMonitorConfig};
 use security::start_security_tasks;
 use shutdown::install_signal_handlers;
+use siem::SiemOutput;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -90,6 +94,14 @@ async fn main() -> Result<()> {
 
     // Metrics registration (ignore errors for now).
     let _ = register_metrics();
+    if daemon_cfg.metrics.enabled {
+        let addr: SocketAddr = ([0, 0, 0, 0], daemon_cfg.metrics.port).into();
+        tokio::spawn(async move {
+            if let Err(e) = crate::metrics::start_metrics_server(addr).await {
+                warn!(error = %e, "Metrics server exited");
+            }
+        });
+    }
 
     let shutdown = shutdown::ShutdownCoordinator::new(std::time::Duration::from_secs(30));
     shutdown
@@ -112,12 +124,22 @@ async fn main() -> Result<()> {
     let _responder = start_security_tasks().await;
 
     // Start behavioral pipeline (rules + alerts).
+    let alert_log_path = std::env::var("WINNCORE_ALERT_LOG")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| daemon_cfg.behavioral.alert_log_path.clone());
+    let external_rules_dir = std::env::var("WINNCORE_RULES_DIR")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| daemon_cfg.behavioral.external_rules_dir.clone());
     let behavioral_cfg = BehavioralConfig {
         response: daemon_cfg.response.clone(),
-        ..BehavioralConfig::default()
+        external_rules_dir,
+        alert_log_path,
     };
     let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
     let mut alert_rx = behavioral_runtime.alert_rx;
+    let siem_output = SiemOutput::new(daemon_cfg.siem.clone());
 
     // Real procfs monitor to generate execution events.
     info!("Starting process monitor...");
@@ -130,6 +152,9 @@ async fn main() -> Result<()> {
         info!("Alert receiver started");
         while let Some(alert) = alert_rx.recv().await {
             log_alert(&alert);
+            if let Err(e) = siem_output.send_behavioral_alert(&alert) {
+                warn!(error = %e, "SIEM output failed");
+            }
         }
     });
 
@@ -156,15 +181,8 @@ async fn main() -> Result<()> {
     });
 
     let mut shutdown_rx = shutdown.subscribe();
-    loop {
-        tokio::select! {
-            _ = shutdown_rx.recv() => {
-                info!("Shutdown signal received");
-                break;
-            }
-            // TODO: main event loop and subsystems here.
-        }
-    }
+    let _ = shutdown_rx.recv().await;
+    info!("Shutdown signal received");
 
     shutdown.wait_for_completion().await;
     info!("Daemon shutdown complete");

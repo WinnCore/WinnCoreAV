@@ -64,7 +64,7 @@ impl HeuristicAnalyzer {
         let window = Duration::from_secs(5);
         let threshold = 20;
 
-        let spawns = self.spawn_tracker.entry(ppid).or_insert_with(Vec::new);
+        let spawns = self.spawn_tracker.entry(ppid).or_default();
         spawns.push(now);
 
         // Remove old entries

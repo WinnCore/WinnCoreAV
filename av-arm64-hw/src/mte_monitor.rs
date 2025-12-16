@@ -40,7 +40,7 @@ pub fn is_mte_supported() -> bool {
         // Check HWCAP2 for MTE support
         let hwcap2 = unsafe { libc::getauxval(libc::AT_HWCAP2) };
         const HWCAP2_MTE: u64 = 1 << 18;
-        return hwcap2 & HWCAP2_MTE != 0;
+        hwcap2 & HWCAP2_MTE != 0
     }
 
     #[cfg(not(target_arch = "aarch64"))]

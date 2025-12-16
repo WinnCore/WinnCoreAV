@@ -99,9 +99,9 @@ impl SyscallValidator {
 
     fn get_maps(&mut self, pid: u32) -> Option<&Vec<MemoryRegion>> {
         // Simple caching - in production, would need TTL
-        if !self.maps_cache.contains_key(&pid) {
+        if let std::collections::hash_map::Entry::Vacant(entry) = self.maps_cache.entry(pid) {
             if let Some(maps) = parse_maps(pid) {
-                self.maps_cache.insert(pid, maps);
+                entry.insert(maps);
             }
         }
         self.maps_cache.get(&pid)
@@ -128,6 +128,12 @@ impl SyscallValidator {
                 | 93   // exit
                 | 94 // exit_group
         )
+    }
+}
+
+impl Default for SyscallValidator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

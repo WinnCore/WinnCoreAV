@@ -183,3 +183,9 @@ impl ProcessTree {
         self.processes.is_empty()
     }
 }
+
+impl Default for ProcessTree {
+    fn default() -> Self {
+        Self::new()
+    }
+}

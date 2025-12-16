@@ -12,7 +12,6 @@ pub enum ResponseAction {
     Alert,
     Kill,
     Quarantine,
-    Block,
 }
 
 /// Paths that should never be quarantined (build tools, system binaries)
@@ -85,7 +84,9 @@ impl ResponseEngine {
         warn!(pid = pid, "KILLING malicious process");
 
         // SIGTERM first
-        let _ = Command::new("kill").args(["-15", &pid.to_string()]).output();
+        let _ = Command::new("kill")
+            .args(["-15", &pid.to_string()])
+            .output();
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // SIGKILL if still alive
@@ -109,6 +110,11 @@ impl ResponseEngine {
             return Ok(PathBuf::new());
         }
 
+        if is_excluded_quarantine_path(path) {
+            info!(path = %path.display(), "Skipping quarantine for excluded path");
+            return Ok(PathBuf::new());
+        }
+
         if !path.exists() {
             return Err(format!("File not found: {}", path.display()));
         }
@@ -120,16 +126,21 @@ impl ResponseEngine {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&self.config.quarantine_dir, fs::Permissions::from_mode(0o700));
+            let _ = fs::set_permissions(
+                &self.config.quarantine_dir,
+                fs::Permissions::from_mode(0o700),
+            );
         }
 
-        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+        let filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
         let quarantine_name = format!("{}_{}.quarantine", timestamp, filename);
         let quarantine_path = self.config.quarantine_dir.join(&quarantine_name);
 
-        fs::rename(path, &quarantine_path)
-            .map_err(|e| format!("Quarantine failed: {}", e))?;
+        fs::rename(path, &quarantine_path).map_err(|e| format!("Quarantine failed: {}", e))?;
 
         warn!(
             original = %path.display(),
@@ -178,10 +189,11 @@ impl ResponseEngine {
                 }
             }
             ResponseAction::Alert => {
-                warn!(severity = severity, pid = pid, "🚨 ALERT: Threat requires attention");
-            }
-            ResponseAction::Block => {
-                info!(pid = pid, "Network block not yet implemented");
+                warn!(
+                    severity = severity,
+                    pid = pid,
+                    "🚨 ALERT: Threat requires attention"
+                );
             }
             ResponseAction::Log => {
                 info!(pid = pid, severity = severity, "Threat logged");
@@ -193,5 +205,17 @@ impl ResponseEngine {
 impl Default for ResponseEngine {
     fn default() -> Self {
         Self::new(ResponseConfig::default())
+    }
+}
+
+fn is_excluded_quarantine_path(path: &Path) -> bool {
+    let path_str = path.to_string_lossy();
+    if EXCLUDED_PATHS.iter().any(|p| path_str.contains(p)) {
+        return true;
+    }
+
+    match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => EXCLUDED_PATHS.contains(&name),
+        None => false,
     }
 }

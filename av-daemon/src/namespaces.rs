@@ -206,7 +206,7 @@ pub fn enter_namespaces(config: &NamespaceConfig) -> Result<(), NamespaceError> 
         let _ = unsafe {
             libc::mount(
                 ptr::null(),
-                b"/\0".as_ptr() as *const _,
+                c"/".as_ptr(),
                 ptr::null(),
                 libc::MS_REC | libc::MS_PRIVATE,
                 ptr::null(),
@@ -248,7 +248,7 @@ pub fn enter_namespaces(config: &NamespaceConfig) -> Result<(), NamespaceError> 
             let res = unsafe {
                 libc::mount(
                     ptr::null(),
-                    b"/\0".as_ptr() as *const _,
+                    c"/".as_ptr(),
                     ptr::null(),
                     libc::MS_REMOUNT | libc::MS_RDONLY | libc::MS_BIND,
                     ptr::null(),

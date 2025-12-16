@@ -264,8 +264,9 @@ pub async fn start_metrics_server(addr: SocketAddr) -> Result<(), Box<dyn std::e
     let make_svc =
         make_service_fn(|_conn| async { Ok::<_, hyper::Error>(service_fn(serve_metrics)) });
 
+    let server = Server::try_bind(&addr)?;
     tracing::info!("Metrics server listening on {}", addr);
-    Server::bind(&addr).serve(make_svc).await?;
+    server.serve(make_svc).await?;
 
     Ok(())
 }

@@ -1,3 +1,37 @@
+pub mod antiforensics;
+pub mod container;
+pub mod cryptominer;
+pub mod injection;
+pub mod obfuscation;
+pub mod rootkit;
+pub mod webshell;
+
+pub use antiforensics::{
+    check_log_file_operation, detect_log_tampering, FileOperation, LogTamperingIndicator,
+    Severity as AntiForensicsSeverity, TamperingType,
+};
+pub use container::{
+    check_container_escape_cmd, check_container_escape_file, is_containerized,
+    ContainerEscapeIndicator, EscapeTechnique, Severity as ContainerSeverity,
+};
+pub use cryptominer::{
+    detect_cryptominer, detect_hidden_miner, CryptoMinerIndicator, MinerType,
+    Severity as CryptoMinerSeverity,
+};
+pub use injection::{
+    check_cmdline_injection, check_env_injection, check_proc_mem_access, InjectionIndicator,
+    InjectionTechnique, Severity as InjectionSeverity,
+};
+pub use obfuscation::{detect_obfuscation, ObfuscationType};
+pub use rootkit::{
+    check_rootkit_file, detect_hidden_processes, detect_rootkit_command, RootkitIndicator,
+    RootkitType, Severity as RootkitSeverity,
+};
+pub use webshell::{
+    check_process_for_webshell, check_webshell_spawn, get_parent_process_name, Confidence,
+    Severity as WebShellSeverity, WebShellIndicator,
+};
+
 use av_ebpf_common::{EventType, ProcessExecEvent};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -13,19 +47,14 @@ pub struct MitreMapping {
     pub sub_technique: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Low,
+    #[default]
     Medium,
     High,
     Critical,
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Severity::Medium
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,5 +253,11 @@ impl RuleEngine {
         }
 
         out
+    }
+}
+
+impl Default for RuleEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }

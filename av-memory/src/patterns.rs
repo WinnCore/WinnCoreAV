@@ -4,11 +4,12 @@ pub struct ShellcodePatterns {
 
 impl ShellcodePatterns {
     pub fn new() -> Self {
-        let mut patterns = Vec::new();
-        patterns.push((vec![0x0f, 0x05], "x64_syscall"));
-        patterns.push((vec![0x48, 0xc7, 0xc0, 0x3b, 0x00, 0x00, 0x00], "x64_execve"));
-        patterns.push((vec![0x01, 0x00, 0x00, 0xd4], "arm64_svc"));
-        patterns.push((vec![0x90; 8], "nop_sled"));
+        let patterns = vec![
+            (vec![0x0f, 0x05], "x64_syscall"),
+            (vec![0x48, 0xc7, 0xc0, 0x3b, 0x00, 0x00, 0x00], "x64_execve"),
+            (vec![0x01, 0x00, 0x00, 0xd4], "arm64_svc"),
+            (vec![0x90; 8], "nop_sled"),
+        ];
         Self { patterns }
     }
 
@@ -25,5 +26,11 @@ impl ShellcodePatterns {
             }
         }
         hits
+    }
+}
+
+impl Default for ShellcodePatterns {
+    fn default() -> Self {
+        Self::new()
     }
 }

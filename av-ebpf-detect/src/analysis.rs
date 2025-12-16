@@ -99,27 +99,23 @@ pub fn analyze_bpf_programs(programs: &[BpfProgInfo], baseline: &BpfBaseline) ->
 
 fn check_high_risk(prog: &BpfProgInfo) -> Option<HighRiskProgram> {
     // XDP programs can intercept ALL packets before the kernel sees them
-    if prog.prog_type == BpfProgType::Xdp {
-        if prog.name.is_empty() || !is_known_xdp(&prog.name) {
-            return Some(HighRiskProgram {
-                id: prog.id,
-                name: prog.name.clone(),
-                reason: "Unknown XDP program - can intercept all network traffic".to_string(),
-                severity: Severity::High,
-            });
-        }
+    if prog.prog_type == BpfProgType::Xdp && (prog.name.is_empty() || !is_known_xdp(&prog.name)) {
+        return Some(HighRiskProgram {
+            id: prog.id,
+            name: prog.name.clone(),
+            reason: "Unknown XDP program - can intercept all network traffic".to_string(),
+            severity: Severity::High,
+        });
     }
 
     // LSM programs can bypass security checks
-    if prog.prog_type == BpfProgType::Lsm {
-        if prog.name.is_empty() {
-            return Some(HighRiskProgram {
-                id: prog.id,
-                name: prog.name.clone(),
-                reason: "Unnamed LSM BPF program - can bypass security".to_string(),
-                severity: Severity::Critical,
-            });
-        }
+    if prog.prog_type == BpfProgType::Lsm && prog.name.is_empty() {
+        return Some(HighRiskProgram {
+            id: prog.id,
+            name: prog.name.clone(),
+            reason: "Unnamed LSM BPF program - can bypass security".to_string(),
+            severity: Severity::Critical,
+        });
     }
 
     // Programs loaded by non-root

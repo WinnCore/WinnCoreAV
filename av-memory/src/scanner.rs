@@ -197,6 +197,12 @@ impl MemoryScanner {
     }
 }
 
+impl Default for MemoryScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn parse_maps_line(line: &str) -> Option<MemoryRegion> {
     let parts: Vec<&str> = line.splitn(6, ' ').collect();
     if parts.len() < 5 {

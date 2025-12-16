@@ -352,6 +352,8 @@ version = "0.1.0"
 dependencies = [
  "av-ebpf-common",
  "fnv",
+ "glob",
+ "lazy_static",
  "regex",
  "serde",
  "serde_json",

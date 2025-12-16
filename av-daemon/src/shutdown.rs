@@ -169,14 +169,6 @@ pub async fn install_signal_handlers(coordinator: Arc<ShutdownCoordinator>) {
             }
         }
 
-        // Flush async stdout/stderr before triggering shutdown to preserve logs.
-        if let Err(e) = tokio::io::stdout().flush().await {
-            warn!(error = %e, "Failed to flush stdout during shutdown");
-        }
-        if let Err(e) = tokio::io::stderr().flush().await {
-            warn!(error = %e, "Failed to flush stderr during shutdown");
-        }
-
         coordinator_clone.shutdown().await;
     });
 }

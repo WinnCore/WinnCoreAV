@@ -95,23 +95,23 @@ impl ContainerDetector {
             return None;
         }
 
-        if path == "/var/run/docker.sock" || path == "/run/docker.sock" {
-            if !self.docker_socket_whitelist.contains(comm) {
-                return Some(ContainerThreat::DockerSocketAccess {
-                    pid,
-                    comm: comm.to_string(),
-                });
-            }
+        if (path == "/var/run/docker.sock" || path == "/run/docker.sock")
+            && !self.docker_socket_whitelist.contains(comm)
+        {
+            return Some(ContainerThreat::DockerSocketAccess {
+                pid,
+                comm: comm.to_string(),
+            });
         }
 
-        if path.contains("/var/run/secrets/kubernetes.io/serviceaccount/token") {
-            if !self.k8s_token_whitelist.contains(comm) {
-                return Some(ContainerThreat::K8sTokenTheft {
-                    pid,
-                    comm: comm.to_string(),
-                    token_path: path.to_string(),
-                });
-            }
+        if path.contains("/var/run/secrets/kubernetes.io/serviceaccount/token")
+            && !self.k8s_token_whitelist.contains(comm)
+        {
+            return Some(ContainerThreat::K8sTokenTheft {
+                pid,
+                comm: comm.to_string(),
+                token_path: path.to_string(),
+            });
         }
 
         if path.starts_with("/proc/sys/") && (flags & 0x1 != 0) {
@@ -223,5 +223,11 @@ impl ContainerDetector {
 
     pub fn context(&self) -> &ContainerContext {
         &self.context
+    }
+}
+
+impl Default for ContainerDetector {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -111,3 +111,9 @@ impl IocDatabase {
         }
     }
 }
+
+impl Default for IocDatabase {
+    fn default() -> Self {
+        Self::new()
+    }
+}

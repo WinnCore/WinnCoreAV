@@ -100,13 +100,13 @@ impl LogSampler {
     /// Check if an ML inference log should be emitted (sampling)
     pub fn should_log_ml_inference(&self) -> bool {
         let count = self.ml_counter.fetch_add(1, Ordering::Relaxed);
-        !self.sampling_enabled || count % self.ml_sample_rate == 0
+        !self.sampling_enabled || count.is_multiple_of(self.ml_sample_rate)
     }
 
     /// Check if a file scan log should be emitted (sampling)
     pub fn should_log_file_scan(&self) -> bool {
         let count = self.file_scan_counter.fetch_add(1, Ordering::Relaxed);
-        !self.sampling_enabled || count % self.file_scan_sample_rate == 0
+        !self.sampling_enabled || count.is_multiple_of(self.file_scan_sample_rate)
     }
 
     /// Check global rate limit, returns true if log should proceed
@@ -403,7 +403,7 @@ pub fn log_non_elf_skip_should_emit(verbose: bool) -> bool {
         return true;
     }
     let count = NON_ELF_SKIP_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-    count == 1 || count % 500 == 0
+    count == 1 || count.is_multiple_of(500)
 }
 
 pub fn non_elf_skip_count() -> usize {

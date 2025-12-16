@@ -214,10 +214,9 @@ impl IoUringDetector {
         if matches!(
             op,
             IoUringOp::Connect | IoUringOp::Send | IoUringOp::Sendmsg
-        ) {
-            if !EXPECTED_IOURING_USERS.iter().any(|u| comm.contains(u)) {
-                return RiskLevel::High;
-            }
+        ) && !EXPECTED_IOURING_USERS.iter().any(|u| comm.contains(u))
+        {
+            return RiskLevel::High;
         }
 
         // High-risk: File operations on sensitive paths
@@ -233,10 +232,10 @@ impl IoUringDetector {
         }
 
         // Critical: Shell spawning io_uring
-        if matches!(comm, "sh" | "bash" | "dash") {
-            if matches!(op, IoUringOp::Connect | IoUringOp::Send) {
-                return RiskLevel::Critical;
-            }
+        if matches!(comm, "sh" | "bash" | "dash")
+            && matches!(op, IoUringOp::Connect | IoUringOp::Send)
+        {
+            return RiskLevel::Critical;
         }
 
         // Medium: Any unexpected io_uring user doing I/O
@@ -381,4 +380,10 @@ fn is_sensitive_path(path: &str) -> bool {
         "/sys/",
     ];
     sensitive.iter().any(|s| path.contains(s))
+}
+
+impl Default for IoUringDetector {
+    fn default() -> Self {
+        Self::new()
+    }
 }

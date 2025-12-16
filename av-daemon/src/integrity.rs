@@ -42,7 +42,7 @@ pub fn hash_self_exe() -> Result<[u8; 32], std::io::Error> {
             }
             hasher.update(&buf[..n]);
         }
-        return Ok(hasher.finalize().into());
+        Ok(hasher.finalize().into())
     }
     #[cfg(not(target_os = "linux"))]
     {

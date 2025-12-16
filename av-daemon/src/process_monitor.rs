@@ -67,14 +67,16 @@ impl ProcessMonitor {
         }
 
         let mut event_count: u64 = 0;
+        let mut next_log_at: u64 = 100;
         loop {
             ticker.tick().await;
             let new_count = self.poll_new_processes().await;
             event_count += new_count as u64;
 
             // Periodic status log
-            if event_count > 0 && event_count % 100 == 0 {
+            if event_count >= next_log_at {
                 info!("Process monitor: {} events sent so far", event_count);
+                next_log_at = (event_count / 100 + 1) * 100;
             }
         }
     }
@@ -114,15 +116,37 @@ impl ProcessMonitor {
                 continue;
             }
 
-            self.seen_pids.insert(pid);
-
             if let Some(event) = self.collect_process_info(pid).await {
                 let comm = String::from_utf8_lossy(&event.comm)
                     .trim_matches('\0')
                     .to_string();
+                let exe = String::from_utf8_lossy(&event.filename)
+                    .trim_matches('\0')
+                    .to_string();
                 let cmdline =
                     String::from_utf8_lossy(&event.args[..event.args_len as usize]).to_string();
+
+                if cmdline.trim().is_empty() {
+                    // If we observe a PID between fork() and execve(), cmdline can be empty.
+                    // Only mark the PID as seen once we have a usable command line, so we can
+                    // retry on subsequent polls. For kernel threads / inaccessible processes
+                    // (no exe link), mark as seen to avoid spinning.
+                    if exe.is_empty() {
+                        self.seen_pids.insert(pid);
+                    } else {
+                        debug!(
+                            pid,
+                            comm = %comm,
+                            exe = %exe,
+                            "Observed process with empty cmdline; will retry"
+                        );
+                    }
+                    continue;
+                }
+
                 debug!(pid, comm = %comm, cmdline = %cmdline, "New process detected");
+
+                self.seen_pids.insert(pid);
 
                 if let Err(e) = self
                     .event_tx
@@ -158,24 +182,74 @@ impl ProcessMonitor {
             return None;
         }
 
-        let comm_str = fs::read_to_string(path.join("comm"))
-            .await
-            .unwrap_or_default()
-            .trim()
-            .to_string();
-
-        let cmdline_bytes = fs::read(path.join("cmdline")).await.unwrap_or_default();
-        let cmdline_str = String::from_utf8_lossy(&cmdline_bytes)
-            .replace('\0', " ")
-            .trim()
-            .to_string();
-
         let (ppid, uid, gid) = self.parse_stat(pid).await.unwrap_or((0, 0, 0));
 
-        let exe_path = fs::read_link(path.join("exe"))
-            .await
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let parent_comm = if ppid > 0 {
+            fs::read_to_string(format!("/proc/{}/comm", ppid))
+                .await
+                .ok()
+                .map(|s| s.trim().to_string())
+        } else {
+            None
+        };
+
+        let parent_cmdline = if ppid > 0 {
+            let parent_cmdline_path = format!("/proc/{}/cmdline", ppid);
+            let s = read_cmdline_string(Path::new(&parent_cmdline_path)).await;
+            (!s.is_empty()).then_some(s)
+        } else {
+            None
+        };
+
+        let parent_exe = if ppid > 0 {
+            fs::read_link(format!("/proc/{}/exe", ppid))
+                .await
+                .ok()
+                .map(|p| p.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let comm_path = path.join("comm");
+        let cmdline_path = path.join("cmdline");
+        let exe_link_path = path.join("exe");
+        let mut comm_str = String::new();
+        let mut cmdline_str = String::new();
+        let mut exe_path = String::new();
+
+        // Race: we may observe a PID between fork() and execve(), where the
+        // child briefly inherits the parent's cmdline/comm. Wait briefly for
+        // exec to complete so we capture the final command line.
+        for attempt in 0..12 {
+            comm_str = fs::read_to_string(&comm_path)
+                .await
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            cmdline_str = read_cmdline_string(&cmdline_path).await;
+            exe_path = fs::read_link(&exe_link_path)
+                .await
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+
+            let cmdline_is_parent = parent_cmdline
+                .as_ref()
+                .is_some_and(|p| !p.is_empty() && p == &cmdline_str);
+            let comm_exe_is_parent = parent_comm
+                .as_ref()
+                .is_some_and(|p| !p.is_empty() && p == &comm_str)
+                && parent_exe
+                    .as_ref()
+                    .is_some_and(|p| !p.is_empty() && p == &exe_path);
+
+            if !cmdline_str.is_empty() && !cmdline_is_parent && !comm_exe_is_parent {
+                break;
+            }
+
+            if attempt < 11 {
+                tokio::time::sleep(Duration::from_millis(2)).await;
+            }
+        }
 
         let mut event = ProcessExecEvent {
             pid,
@@ -253,4 +327,12 @@ pub fn spawn_process_monitor(
     info!("Spawning process monitor task");
     let monitor = ProcessMonitor::new(config, event_tx);
     tokio::spawn(monitor.run())
+}
+
+async fn read_cmdline_string(path: &Path) -> String {
+    let cmdline_bytes = fs::read(path).await.unwrap_or_default();
+    String::from_utf8_lossy(&cmdline_bytes)
+        .replace('\0', " ")
+        .trim()
+        .to_string()
 }

@@ -131,7 +131,7 @@ fn get_library_addresses() -> Vec<u64> {
 fn estimate_entropy(exe_addr: Option<u64>) -> Option<u32> {
     if let Some(addr) = exe_addr {
         if cfg!(target_arch = "aarch64") {
-            if addr >= 0x5500_0000_00 {
+            if addr >= 0x0055_0000_0000 {
                 return Some(28);
             } else if addr == 0x400000 {
                 return Some(0);

@@ -197,12 +197,20 @@ impl core::fmt::Debug for EventPayload {
 #[cfg(feature = "user")]
 impl ProcessExecEvent {
     pub fn comm_str(&self) -> &str {
-        let len = self.comm.iter().position(|&b| b == 0).unwrap_or(MAX_COMM_LEN);
+        let len = self
+            .comm
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(MAX_COMM_LEN);
         core::str::from_utf8(&self.comm[..len]).unwrap_or("<invalid>")
     }
 
     pub fn filename_str(&self) -> &str {
-        let len = self.filename.iter().position(|&b| b == 0).unwrap_or(MAX_PATH_LEN);
+        let len = self
+            .filename
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(MAX_PATH_LEN);
         core::str::from_utf8(&self.filename[..len]).unwrap_or("<invalid>")
     }
 
@@ -222,7 +230,10 @@ impl NetworkConnectEvent {
             }
             10 => {
                 let bytes = self.dest_addr_v6;
-                format!("{:02x}{:02x}:{:02x}{:02x}:...", bytes[0], bytes[1], bytes[2], bytes[3])
+                format!(
+                    "{:02x}{:02x}:{:02x}{:02x}:...",
+                    bytes[0], bytes[1], bytes[2], bytes[3]
+                )
             }
             _ => "<unknown>".to_string(),
         }

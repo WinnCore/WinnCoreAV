@@ -8,7 +8,7 @@ description = "WinnCoreAV Desktop Interface"
 tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { version = "1.6", features = ["shell-open"] }
+tauri = { version = "1.6", features = ["shell-open"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
@@ -16,9 +16,11 @@ notify = "6.0"
 chrono = { version = "0.4", features = ["serde"] }
 
 [features]
-default = ["custom-protocol"]
-custom-protocol = ["tauri/custom-protocol"]
+default = []
+gui = ["custom-protocol"]
+custom-protocol = ["dep:tauri", "tauri/custom-protocol"]
 
 [[bin]]
 name = "av-gui"
 path = "src-tauri/src/main.rs"
+required-features = ["gui"]

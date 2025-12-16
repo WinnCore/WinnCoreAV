@@ -105,7 +105,7 @@ pub struct BpfProgInfo {
 
 impl BpfProgInfo {
     pub fn tag_hex(&self) -> String {
-        hex::encode(&self.tag)
+        hex::encode(self.tag)
     }
 
     pub fn is_suspicious(&self) -> bool {
@@ -129,22 +129,16 @@ pub fn enumerate_bpf_programs() -> Vec<BpfProgInfo> {
     let mut programs = Vec::new();
     let mut id: u32 = 0;
 
-    loop {
-        // Get next program ID
-        match bpf_prog_get_next_id(id) {
-            Some(next_id) => {
-                id = next_id;
+    while let Some(next_id) = bpf_prog_get_next_id(id) {
+        id = next_id;
 
-                // Get program info
-                if let Some(info) = get_prog_info(id) {
-                    debug!(
-                        "Found BPF program: id={} type={:?} name={}",
-                        id, info.prog_type, info.name
-                    );
-                    programs.push(info);
-                }
-            }
-            None => break,
+        // Get program info
+        if let Some(info) = get_prog_info(id) {
+            debug!(
+                "Found BPF program: id={} type={:?} name={}",
+                id, info.prog_type, info.name
+            );
+            programs.push(info);
         }
     }
 

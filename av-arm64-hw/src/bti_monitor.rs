@@ -31,7 +31,7 @@ pub fn is_bti_supported() -> bool {
     {
         let hwcap2 = unsafe { libc::getauxval(libc::AT_HWCAP2) };
         const HWCAP2_BTI: u64 = 1 << 17;
-        return hwcap2 & HWCAP2_BTI != 0;
+        hwcap2 & HWCAP2_BTI != 0
     }
 
     #[cfg(not(target_arch = "aarch64"))]

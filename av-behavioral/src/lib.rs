@@ -7,11 +7,13 @@
 //! - Real-time alerting based on rule matches
 
 pub mod alerts;
+pub mod allowlist;
 pub mod correlation;
 pub mod process_tree;
 pub mod rules;
 
 pub use alerts::{Alert, AlertSeverity};
+pub use allowlist::Allowlist;
 pub use correlation::{AttackChain, CorrelationEngine};
 pub use process_tree::{ProcessInfo, ProcessTree};
 pub use rules::{Rule, RuleEngine, RuleMatch, Severity};

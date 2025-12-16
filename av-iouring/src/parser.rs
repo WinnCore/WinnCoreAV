@@ -81,7 +81,7 @@ pub fn find_iouring_mmaps(pid: u32) -> Vec<IoUringMmap> {
         {
             // Parse the line: start-end perms offset dev inode pathname
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 1 {
+            if !parts.is_empty() {
                 let addrs: Vec<&str> = parts[0].split('-').collect();
                 if addrs.len() == 2 {
                     if let (Ok(start), Ok(end)) = (

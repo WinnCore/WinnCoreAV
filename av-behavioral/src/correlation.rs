@@ -59,7 +59,7 @@ impl CorrelationEngine {
         let pid = rule_match.pid;
         let now = rule_match.timestamp_ns;
 
-        let queue = self.recent.entry(pid).or_insert_with(VecDeque::new);
+        let queue = self.recent.entry(pid).or_default();
 
         // Trim old events that fall outside the correlation window
         let cutoff = now.saturating_sub(self.window_ns);

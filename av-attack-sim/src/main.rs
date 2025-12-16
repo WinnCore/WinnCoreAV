@@ -6,6 +6,7 @@ use colored::*;
 use libc::geteuid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 use tokio::process::Command;
@@ -13,6 +14,8 @@ use tokio::time::timeout;
 
 // Detection timeout per simulation
 const DETECTION_TIMEOUT_MS: u64 = 2000;
+// Keep each simulated process alive long enough for procfs polling monitors.
+const PROCESS_HOLD_MS: u64 = 500;
 const DEFAULT_ALERT_LOG: &str = "/var/log/winncore/alerts.json";
 const FALLBACK_ALERT_LOG: &str = "./alerts.json";
 
@@ -369,8 +372,8 @@ fn get_simulations() -> Vec<Simulation> {
             command: r#"bash -c 'echo ${PATH:0:1}etc${PATH:0:1}passwd'"#,
             cleanup: None,
             needs_root: false,
-            detection_pattern: "obf_env_slicing|${PATH:0:1}",
-            expected_rule: Some("obf_env_slicing"),
+            detection_pattern: "obf_env_slice|${PATH:0:1}",
+            expected_rule: Some("obf_env_slice"),
         },
         Simulation {
             id: "OBF006",
@@ -610,8 +613,8 @@ fn get_simulations() -> Vec<Simulation> {
             name: "Backdoor Installation",
             technique: "T1543",
             tactic: "Persistence",
-            command: r#"bash -c 'echo \"echo ssh-rsa AAAA >> authorized_keys\"'"#,
-            cleanup: None,
+            command: r#"bash -c 'echo "ssh-rsa AAAA" >> /tmp/wc-test-authorized_keys'"#,
+            cleanup: Some("rm -f /tmp/wc-test-authorized_keys"),
             needs_root: false,
             detection_pattern: "resp_backdoor_install|authorized_keys",
             expected_rule: Some("resp_backdoor_install"),
@@ -635,7 +638,19 @@ async fn run_simulation(sim: &Simulation, _is_root: bool) -> SimResult {
     }
 
     let start = Instant::now();
-    let command_with_delay = format!("{}; sleep 0.2", sim.command);
+    let hold_secs = PROCESS_HOLD_MS as f64 / 1000.0;
+    let hold_clause = format!("sleep {:.3} & wait", hold_secs);
+    // Keep the parent `bash -c` process alive long enough for procfs polling.
+    //
+    // Note: appending a plain `sleep` can cause bash to `exec` the final command,
+    // replacing its cmdline with `sleep <n>` and hiding the simulated pattern.
+    // Backgrounding the sleep and ending with `wait` keeps bash running with the
+    // original cmdline intact.
+    let command_with_delay = if sim.command.trim_end().ends_with('&') {
+        format!("{} {}", sim.command.trim_end(), hold_clause)
+    } else {
+        format!("{}; {}", sim.command, hold_clause)
+    };
 
     let exec_result = Command::new("bash")
         .args(["-c", &command_with_delay])
@@ -674,7 +689,8 @@ async fn run_simulation(sim: &Simulation, _is_root: bool) -> SimResult {
 }
 
 async fn check_detection(sim: &Simulation) -> bool {
-    let alert_path = std::env::var("WINNCORE_ALERT_LOG").unwrap_or_else(|_| DEFAULT_ALERT_LOG.to_string());
+    let alert_path =
+        std::env::var("WINNCORE_ALERT_LOG").unwrap_or_else(|_| DEFAULT_ALERT_LOG.to_string());
     let check_fut = async {
         let paths = [alert_path.as_str(), FALLBACK_ALERT_LOG];
 
@@ -730,10 +746,7 @@ fn print_banner() {
 "#
         .cyan()
     );
-    println!(
-        "   {}",
-        "FAST ATTACK SIMULATION SUITE".white().bold()
-    );
+    println!("   {}", "FAST ATTACK SIMULATION SUITE".white().bold());
     println!(
         "   {}",
         "52 simulations • <120s runtime • Full coverage suite".dimmed()
@@ -760,7 +773,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  {} av-daemon running", "✓".green());
     } else {
         println!("  {} av-daemon not running", "⚠".yellow());
-        println!("    {}", "(Detection tests will show NOT DETECTED)".dimmed());
+        println!(
+            "    {}",
+            "(Detection tests will show NOT DETECTED)".dimmed()
+        );
     }
     if is_root {
         println!("  {} Running as root", "✓".green());
@@ -804,7 +820,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let elapsed = total_start.elapsed();
     let skipped: Vec<_> = results.iter().filter(|r| r.skipped).collect();
     let detected: Vec<_> = results.iter().filter(|r| r.detected).collect();
-    let executed: Vec<_> = results.iter().filter(|r| r.executed && !r.skipped).collect();
+    let executed: Vec<_> = results
+        .iter()
+        .filter(|r| r.executed && !r.skipped)
+        .collect();
 
     let mut by_tactic: HashMap<String, (usize, usize)> = HashMap::new();
     for r in results.iter().filter(|r| !r.skipped) {
@@ -874,7 +893,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n{}", "═".repeat(70).cyan());
     if !daemon_running {
-        println!("  {} Daemon not running - detection results are baseline", "ℹ".blue());
+        println!(
+            "  {} Daemon not running - detection results are baseline",
+            "ℹ".blue()
+        );
         println!("    Start daemon and re-run for actual detection testing");
     } else if detection_rate >= 80.0 {
         println!(
@@ -883,11 +905,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             detection_rate
         );
     } else if detection_rate >= 50.0 {
-        println!("  {} GOOD - {:.0}% detection rate", "✓".green(), detection_rate);
+        println!(
+            "  {} GOOD - {:.0}% detection rate",
+            "✓".green(),
+            detection_rate
+        );
     } else if detection_rate > 0.0 {
-        println!("  {} PARTIAL - {:.0}% detection rate", "⚠".yellow(), detection_rate);
+        println!(
+            "  {} PARTIAL - {:.0}% detection rate",
+            "⚠".yellow(),
+            detection_rate
+        );
     } else {
-        println!("  {} No detections - implement Parts 1-3 first", "○".yellow());
+        println!(
+            "  {} No detections - implement Parts 1-3 first",
+            "○".yellow()
+        );
     }
     println!("{}\n", "═".repeat(70).cyan());
 
@@ -909,8 +942,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let json = serde_json::to_string_pretty(&output)?;
-    std::fs::write("attack_sim_results.json", &json)?;
-    println!("Results saved to: {}", "attack_sim_results.json".green());
+    let results_path = std::env::var("WINNCORE_ATTACK_SIM_RESULTS")
+        .unwrap_or_else(|_| "attack_sim_results.json".to_string());
+    if let Some(parent) = Path::new(&results_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    std::fs::write(&results_path, &json)?;
+    println!("Results saved to: {}", results_path.green());
 
     Ok(())
 }

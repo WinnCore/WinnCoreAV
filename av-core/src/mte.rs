@@ -90,7 +90,7 @@ pub fn enable_mte(mode: MteMode) -> Result<MteMode, MteError> {
         MteMode::Asymm => PR_MTE_TCF_SYNC | PR_MTE_TCF_ASYNC,
     };
 
-    let flags = PR_TAGGED_ADDR_ENABLE as u64 | tcf_mode | tag_mask;
+    let flags = PR_TAGGED_ADDR_ENABLE | tcf_mode | tag_mask;
     let result = unsafe { prctl(PR_SET_TAGGED_ADDR_CTRL, flags, 0, 0, 0) };
     if result == 0 {
         MTE_ENABLED.store(true, Ordering::SeqCst);
@@ -178,6 +178,14 @@ pub unsafe fn tag_memory(ptr: *mut u8, len: usize, tag: u8) -> Result<(), MteErr
     not(all(target_arch = "aarch64", target_os = "linux")),
     not(target_feature = "mte")
 ))]
+/// Tag a memory region with the provided tag.
+///
+/// On targets without hardware MTE support, this is a no-op.
+///
+/// # Safety
+///
+/// Callers must ensure `_ptr` is valid for `_len` bytes and meets any alignment
+/// requirements when running on MTE-capable platforms.
 pub unsafe fn tag_memory(_ptr: *mut u8, _len: usize, _tag: u8) -> Result<(), MteError> {
     Ok(())
 }

@@ -1,14 +1,30 @@
+# Build artifacts
 /target/
 **/*.rs.bk
-Cargo.lock
-*.swp
-*.swo
-*~
-.DS_Store
+
+# IDE
 .idea/
 .vscode/
-*.log
-/quarantine/
-*.quarantine
+*.swp
+*.swo
+
+# Environment/secrets
 .env
-test_output_*/
+.env.*
+*.pem
+*.key
+
+# ML models (if large, use Git LFS instead)
+# *.onnx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Test artifacts
+/test-results/
+/coverage/

@@ -4,7 +4,13 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 version.workspace = true
-publish = false
+description = "Encrypted quarantine manager for WinnCoreAV"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-quarantine"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "quarantine"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true

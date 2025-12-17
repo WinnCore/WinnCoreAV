@@ -5,6 +5,13 @@ version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+description = "Userspace loader for WinnCoreAV eBPF probes"
+documentation = "https://docs.rs/av-ebpf-loader"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "ebpf"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [dependencies]
 aya = { version = "0.12", features = ["async_tokio"] }

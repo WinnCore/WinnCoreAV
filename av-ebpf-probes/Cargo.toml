@@ -2,13 +2,21 @@
 name = "av-ebpf-probes"
 version = "0.1.0"
 edition = "2021"
-description = "WinnCore eBPF probes for behavioral monitoring"
+authors = ["Zachary Winn <zw@winncore.com>"]
+license = "Apache-2.0"
+description = "eBPF probe programs for WinnCoreAV behavioral monitoring"
+repository = "https://github.com/WinnCore/WinnCoreAV"
+homepage = "https://github.com/WinnCore/WinnCoreAV"
+documentation = "https://docs.rs/av-ebpf-probes"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "ebpf"]
+categories = ["command-line-utilities", "development-tools"]
 publish = false
 
 [dependencies]
 aya-ebpf = "0.1"
 aya-log-ebpf = "0.1"
-av-ebpf-common = { path = "../av-ebpf-common", features = ["bpf"], default-features = false }
+av-ebpf-common = { path = "../av-ebpf-common", version = "0.1.0", features = ["bpf"], default-features = false }
 
 [[bin]]
 name = "winncore-ebpf"

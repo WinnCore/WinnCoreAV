@@ -1,10 +1,10 @@
-//! Parse /proc/[pid]/maps to find legitimate code regions.
+//! Parse `/proc/\[pid\]/maps` to find legitimate code regions.
 
 use std::fs;
 
 use serde::Serialize;
 
-/// Memory region from /proc/[pid]/maps.
+/// Memory region from `/proc/\[pid\]/maps`.
 #[derive(Debug, Clone, Serialize)]
 pub struct MemoryRegion {
     pub start: u64,

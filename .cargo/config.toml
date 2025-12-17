@@ -11,10 +11,6 @@ rustflags = [
     "-C", "link-arg=-Wl,-z,noexecstack",
     "-C", "link-arg=-fstack-clash-protection",
 
-    # ARM64-specific hardening
-    "-C", "link-arg=-mbranch-protection=bti",
-    "-C", "link-arg=-mbranch-protection=pac-ret",
-
     # Fortification
     "-C", "link-arg=-D_FORTIFY_SOURCE=2",
 ]
@@ -36,11 +32,17 @@ strip = "none"
 
 [target.aarch64-unknown-linux-gnu]
 linker = "aarch64-linux-gnu-gcc"
+rustflags = [
+    "-C", "link-arg=-mbranch-protection=bti",
+    "-C", "link-arg=-mbranch-protection=pac-ret",
+]
 
 [target.aarch64-unknown-linux-musl]
 linker = "aarch64-linux-musl-gcc"
 rustflags = [
     "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-mbranch-protection=bti",
+    "-C", "link-arg=-mbranch-protection=pac-ret",
 ]
 
 [target.aarch64-apple-darwin]

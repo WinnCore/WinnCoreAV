@@ -2,8 +2,15 @@
 name = "av-deception"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Deception and canary file detection for WinnCore EDR"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-deception"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "deception"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 libc = "0.2"
@@ -11,5 +18,5 @@ nix = "0.27"
 inotify = "0.10"
 tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.42", features = ["sync", "fs", "macros", "rt"] }
+tokio = { version = "1.42", features = ["sync", "fs", "macros", "rt", "time"] }
 uuid = { version = "1", features = ["v4"] }

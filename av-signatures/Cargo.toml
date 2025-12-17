@@ -4,10 +4,16 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 version.workspace = true
-publish = false
+description = "Signature bundle fetching and verification for WinnCoreAV"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-signatures"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "signatures"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
-av-core = { path = "../av-core" }
+av-core = { path = "../av-core", version = "0.1.0" }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true

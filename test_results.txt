@@ -1,0 +1,494 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s
+     Running unittests src/lib.rs (target/debug/deps/av_arm64_hw-f81577312ae5ca89)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/attack_sim-03ef7fb3586ce90e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_behavioral-d61a7a8e3bf91b4c)
+
+running 39 tests
+test allowlist::tests::test_command_allowlist ... ok
+test allowlist::tests::test_cargo_allowlisted ... ok
+test rules::antiforensics::tests::test_audit_tampering ... ok
+test allowlist::tests::test_spawn_allowlist ... ok
+test rules::container::tests::test_cgroups_escape_detection ... ok
+test rules::container::tests::test_device_access ... ok
+test allowlist::tests::test_full_suppression_check ... ok
+test rules::container::tests::test_nsenter_escape ... ok
+test rules::container::tests::test_docker_socket_detection ... ok
+test rules::antiforensics::tests::test_log_truncation ... ok
+test rules::antiforensics::tests::test_log_file_operation ... ok
+test rules::antiforensics::tests::test_history_clearing ... ok
+test rules::injection::tests::test_ld_preload_detection ... ok
+test rules::antiforensics::tests::test_timestomping ... ok
+test rules::injection::tests::test_proc_mem_access ... ok
+test rules::injection::tests::test_ptrace_detection ... ok
+test rules::injection::tests::test_env_injection ... ok
+test rules::obfuscation::tests::test_double_base64_detection ... ok
+test rules::cryptominer::tests::test_hidden_miner ... ok
+test rules::obfuscation::tests::test_env_slice_detection ... ok
+test rules::obfuscation::tests::test_concat_detection ... ok
+test rules::cryptominer::tests::test_xmrig_detection ... ok
+test rules::cryptominer::tests::test_legitimate_process ... ok
+test rules::cryptominer::tests::test_pool_connection ... ok
+test rules::rootkit::tests::test_binary_replacement ... ok
+test rules::rootkit::tests::test_hidden_file_detection ... ok
+test rules::rootkit::tests::test_kernel_module_detection ... ok
+test rules::obfuscation::tests::test_base64_detection ... ok
+test rules::webshell::tests::test_apache_spawning_bash ... ok
+test rules::webshell::tests::test_java_spawning_whoami ... ok
+test rules::webshell::tests::test_nginx_spawning_nc ... ok
+test rules::webshell::tests::test_normal_process_not_flagged ... ok
+test rules::webshell::tests::test_php_fpm_reverse_shell ... ok
+test rules::webshell::tests::test_passwd_access_critical ... ok
+test rules::cryptominer::tests::test_wallet_detection ... ok
+test rules::rootkit::tests::test_ld_preload_detection ... ok
+test rules::obfuscation::tests::test_octal_detection ... ok
+test rules::obfuscation::tests::test_rot13_detection ... ok
+test rules::obfuscation::tests::test_hex_detection ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/detection_tests.rs (target/debug/deps/detection_tests-19ce8a9e6d39d367)
+
+running 12 tests
+test matches_attack_sim_impact_rm_rf_root ... ok
+test matches_attack_sim_iouring_inspection ... ok
+test matches_attack_sim_data_exfiltration_tar_to_curl ... ok
+test matches_attack_sim_container_docker_socket_ls ... ok
+test matches_attack_sim_env_slicing ... ok
+test matches_attack_sim_dns_tunnel_dig_short_txt_ordering ... ok
+test matches_attack_sim_base64_decode_exec ... ok
+test matches_attack_sim_obfuscation_hex_double_quotes ... ok
+test matches_attack_sim_process_injection_ld_preload ... ok
+test matches_attack_sim_obfuscation_rot13_double_quotes ... ok
+test matches_attack_sim_reverse_shell_pattern ... ok
+test matches_attack_sim_python_suspicious_import ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s
+
+     Running unittests src/main.rs (target/debug/deps/av_cli-922a2620c56bdc2b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_containers-854a1bccbcdbe4b5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_core-20d92a1115594074)
+
+running 30 tests
+test allocator::tests::allocator_integrity ... ok
+test arm64_security::tests::parses_cpuinfo_features_line ... ok
+test arm64_security::tests::parses_gnu_property_feature_bits ... ok
+test bounded::tests::test_bounded_map_eviction ... ok
+test arm64_security::tests::parses_bti_and_mte_from_pfr1 ... ok
+test arm64_security::tests::parses_pac_fields_from_isar1 ... ok
+test bounded::tests::test_bounded_queue_overflow ... ok
+test bounded::tests::test_bounded_queue_try_push ... ok
+test arm64_security::tests::detects_absent_pac_fields ... ok
+test bounded::tests::test_rate_limited_counter ... ok
+test encrypted_strings::tests::test_encrypted_string_macro ... ok
+test encrypted_strings::tests::test_runtime_encryption ... ok
+test mte::tests::test_pointer_tagging_roundtrip ... ok
+test logging::tests::test_log_sampler_ml_sampling ... ok
+test allocator::tests::allocator_basic ... ok
+test retry::tests::test_delay_calculation ... ok
+test logging::tests::test_rate_limiting ... ok
+test mte::tests::test_random_tag_range ... ok
+test secure_mem::tests::test_constant_time_eq ... ok
+test secure_mem::tests::test_secret_bytes ... ok
+test retry::tests::test_non_retryable_fails_immediately ... ok
+test validation::tests::test_config_validator ... ok
+test validation::tests::test_path_validator_rejects_null_bytes ... ok
+test retry::tests::test_succeeds_first_try ... ok
+test validation::tests::test_path_validator_rejects_traversal ... ok
+test validation::tests::test_validate_sha256 ... ok
+test validation::tests::test_sanitize_filename ... ok
+test telemetry::tests::jsonl_sink_writes_and_parses ... ok
+test retry::tests::test_succeeds_after_retry ... ok
+test retry::tests::test_exhausts_retries ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/main.rs (target/debug/deps/av_core-7e2ef04e640a74a7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/common.rs (target/debug/deps/common-9ef315e83f4c364e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration_basic.rs (target/debug/deps/integration_basic-9efd77ebc2f23997)
+
+running 1 test
+test test_malware_and_benign_samples ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration_pipeline.rs (target/debug/deps/integration_pipeline-f48fb63c7335a9cb)
+
+running 1 test
+test integration_pipeline_basic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/log_noise.rs (target/debug/deps/log_noise-9ff472b075fbef56)
+
+running 1 test
+test non_elf_skip_throttling ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_24h_soak.rs (target/debug/deps/stress_24h_soak-bb45c6f06a34e8fd)
+
+running 1 test
+test stress_24h_soak ... ignored, long-running soak; run with: cargo test --release -p av-core stress_24h_soak -- --ignored --nocapture
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_common.rs (target/debug/deps/stress_common-ec4baca7051ac2f4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_concurrent_scanning_ext.rs (target/debug/deps/stress_concurrent_scanning_ext-d5a3d0700a89d2ed)
+
+running 1 test
+test stress_concurrent_scanning_ext ... ignored, high concurrency; run manually: cargo test --release -p av-core stress_concurrent_scanning_ext -- --ignored --nocapture
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_io_heavy.rs (target/debug/deps/stress_io_heavy-370021ab109706c1)
+
+running 1 test
+test stress_io_heavy ... ignored, heavy I/O; run manually: cargo test --release -p av-core stress_io_heavy -- --ignored --nocapture
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_memory_pressure.rs (target/debug/deps/stress_memory_pressure-6e4e01aebef1783d)
+
+running 1 test
+test stress_memory_pressure ... ignored, allocates large buffers; run manually with care
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/stress_test.rs (target/debug/deps/stress_test-b6b139d5dbc62ef9)
+
+running 4 tests
+test stress_concurrent_scanning_heavy ... ignored, heavier stress; run manually: cargo test --release stress_concurrent_scanning_heavy -- --ignored --nocapture
+test stress_quarantine_batch_ci_safe ... ok
+test stress_concurrent_scanning_ci_safe ... ok
+test stress_memory_regression_small_loop ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running unittests src/main.rs (target/debug/deps/av_daemon-e33571af772d0030)
+
+running 21 tests
+test heuristics::tests::test_suspicious_patterns ... ok
+test aslr_verify::tests::aslr_level ... ok
+test heuristics::tests::test_entropy_calculation ... ok
+test landlock::tests::access_bits ... ok
+test aslr_verify::tests::pie_detection ... ok
+test landlock::tests::ruleset_builder ... ok
+test circuit_breaker::tests::test_circuit_breaker_opens_after_failures ... ok
+test memory_audit::tests::parse_line ... ok
+test metrics::tests::test_metrics_registration ... ok
+test namespaces::tests::config_defaults ... ok
+test siem::tests::test_cef_format ... ok
+test siem::tests::test_json_format ... ok
+test watchdog::tests::test_task_completion ... ok
+test watchdog::tests::test_task_guard ... ok
+test watchdog::tests::test_task_guard_drop_without_complete ... ok
+test metrics::tests::test_metrics_timer ... ok
+[2m2025-12-16T12:06:29.974802Z[0m [32m INFO[0m [2mav_daemon::circuit_breaker[0m[2m:[0m Circuit breaker transitioning to half-open [3mcircuit[0m[2m=[0mtest
+test circuit_breaker::tests::test_circuit_breaker_half_open_recovery ... ok
+[2m2025-12-16T12:06:29.974867Z[0m [32m INFO[0m [2mav_daemon::circuit_breaker[0m[2m:[0m Circuit breaker closed - service recovered [3mcircuit[0m[2m=[0mtest
+test watchdog::tests::test_heartbeat ... ok
+test watchdog::tests::test_timeout_detection ... ok
+test integrity::tests::hash_self_ok ... ok
+[2m2025-12-16T12:06:41.120178Z[0m [32m INFO[0m [2mav_daemon::integrity[0m[2m:[0m Integrity baseline set [3mhash_prefix[0m[2m=[0m"a545487c"
+test hardening::tests::dev_config_ok ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.19s
+
+[2m2025-12-16T12:06:52.144874Z[0m [32m INFO[0m [2mav_daemon::hardening[0m[2m:[0m Hardening initialization complete [3mmte[0m[2m=[0mfalse [3mlandlock[0m[2m=[0mfalse [3mnamespaces[0m[2m=[0mfalse [3maslr[0m[2m=[0mtrue [3mmemory_audit[0m[2m=[0mtrue [3mintegrity[0m[2m=[0mtrue [3mwarnings[0m[2m=[0m1 [3merrors[0m[2m=[0m0
+     Running tests/metrics_test.rs (target/debug/deps/metrics_test-ff79aab19190ca66)
+
+running 2 tests
+test test_metrics_endpoint_availability ... ok
+test test_metrics_format ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/realtime_scan.rs (target/debug/deps/realtime_scan-0f10058ce8aa7c07)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_deception-46f3b00ef00027ab)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_ebpf-0f273035ae1334e8)
+
+running 2 tests
+test tests::rule_engine_matches_sensitive_file ... ok
+test tests::monitor_starts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/av_ebpf_common-f596f6e735a72475)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_ebpf_detect-6817a22a930e74f0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/av_ebpf_loader-6821ae9bac4198b5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_fileless-f3746dc4ea7e4d7f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_iouring-c27a0d0c1770330d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_memory-844e2e5ed4b918a2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_mitre_tests-1a209d448d04469a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/runner.rs (target/debug/deps/mitre_test_runner-97cdc0fbe838f3d4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_ml_detector-9103dce4dfdc1b95)
+
+running 3 tests
+test tests::adversarial_detects_high_entropy_small ... ok
+test tests::adversarial_detects_zero_entropy_large ... ok
+test tests::adversarial_normal_sample ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_tests.rs (target/debug/deps/manifest_tests-13697ef0037f493d)
+
+running 3 tests
+test select_current_model ... ok
+test select_locked_model ... ok
+test manifest_parse_and_checksum ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_quarantine-99a1f80afd391c6f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_response-9be78b55f914f1da)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_rootkit-c158f4a78dd91c03)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_signatures-a15347873a64b1d8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_stack_trace-bf6775a75728526a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/av_threatintel-2dad34a053fe12b6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/av_watchdog-fddcd5589d6819cc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/winncore_monitor-31a6bc811d38f7c0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_arm64_hw
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_behavioral
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_containers
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_deception
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_ebpf
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_ebpf_common
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_ebpf_detect
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_fileless
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_iouring
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_memory
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_mitre_tests
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_ml_detector
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_quarantine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_response
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_rootkit
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_signatures
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_stack_trace
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests av_threatintel
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests winncore_monitor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

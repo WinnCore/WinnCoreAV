@@ -2,7 +2,16 @@
 name = "av-attack-sim"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Fast attack simulation for WinnCore EDR validation"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-attack-sim"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "simulation"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [[bin]]
 name = "attack-sim"

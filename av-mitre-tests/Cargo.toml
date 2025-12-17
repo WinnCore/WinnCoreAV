@@ -2,8 +2,16 @@
 name = "av-mitre-tests"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "MITRE ATT&CK test suite for WinnCore EDR validation"
 publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-mitre-tests"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "mitre"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

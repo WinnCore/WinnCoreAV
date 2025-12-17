@@ -2,8 +2,15 @@
 name = "av-memory"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Fileless malware and memory scanning for WinnCore"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-memory"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "memory"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

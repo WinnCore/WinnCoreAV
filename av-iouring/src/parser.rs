@@ -43,7 +43,7 @@ impl IoUringSqe {
 /// Read SQEs from a process's io_uring submission queue.
 ///
 /// This requires:
-/// 1. Finding the ring's mmap region in /proc/[pid]/maps
+/// 1. Finding the ring's mmap region in `/proc/\[pid\]/maps`
 /// 2. Reading the sq_head/sq_tail from the ring
 /// 3. Reading pending SQEs from the array
 ///

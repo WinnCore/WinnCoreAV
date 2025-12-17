@@ -11,7 +11,7 @@
 //!
 //! Detection:
 //! - Hook memfd_create() syscall
-//! - Scan /proc/[pid]/exe for "memfd:" or "(deleted)"
+//! - Scan `/proc/\[pid\]/exe` for "memfd:" or "(deleted)"
 //! - Monitor /dev/shm for executables
 //! - Track fexecve() calls
 

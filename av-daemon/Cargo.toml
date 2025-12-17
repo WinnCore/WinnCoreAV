@@ -5,21 +5,28 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 publish = false
+description = "System daemon for WinnCoreAV real-time monitoring and response"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-daemon"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "daemon"]
+categories = ["command-line-utilities", "development-tools"]
 
 [features]
 default = []
 behavior_monitor = ["aya"]
 
 [dependencies]
-winncore-monitor = { path = "../winncore-monitor" }
-av-core = { path = "../av-core" }
-av-behavioral = { path = "../av-behavioral" }
-av-ebpf-common = { path = "../av-ebpf-common", features = ["user"] }
-av-containers = { path = "../av-containers" }
-av-memory = { path = "../av-memory" }
-av-response = { path = "../av-response" }
-av-rootkit = { path = "../av-rootkit" }
-av-threatintel = { path = "../av-threatintel" }
+winncore-monitor = { path = "../winncore-monitor", version = "0.1.0" }
+av-core = { path = "../av-core", version = "0.1.0" }
+av-behavioral = { path = "../av-behavioral", version = "0.1.0" }
+av-ebpf-common = { path = "../av-ebpf-common", version = "0.1.0", features = ["user"] }
+av-containers = { path = "../av-containers", version = "0.1.0" }
+av-memory = { path = "../av-memory", version = "0.1.0" }
+av-response = { path = "../av-response", version = "0.1.0" }
+av-rootkit = { path = "../av-rootkit", version = "0.1.0" }
+av-threatintel = { path = "../av-threatintel", version = "0.1.0" }
 anyhow.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true

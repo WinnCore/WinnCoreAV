@@ -2,8 +2,15 @@
 name = "av-arm64-hw"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "ARM64 hardware security feature monitoring for WinnCore EDR"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-arm64-hw"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "hardening"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 libc = "0.2"

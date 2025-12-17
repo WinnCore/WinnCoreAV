@@ -5,11 +5,18 @@ version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+description = "Realtime file monitoring and scanning runtime for WinnCoreAV"
+documentation = "https://docs.rs/winncore-monitor"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "monitoring"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [dependencies]
 
 anyhow.workspace = true
-av-core = { path = "../av-core" }
+av-core = { path = "../av-core", version = "0.1.0" }
 # TODO: add dependency for crossbeam_channel
 # TODO: add dependency for filetime
 # TODO: add dependency for glob

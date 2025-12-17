@@ -5,6 +5,13 @@ version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+description = "Systemd watchdog and health checking helper for WinnCoreAV services"
+documentation = "https://docs.rs/av-watchdog"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "watchdog"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [dependencies]
 tokio = { version = "1", features = ["full", "signal"] }

@@ -2,8 +2,15 @@
 name = "av-stack-trace"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Stack trace validation for direct syscall detection"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-stack-trace"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "stacktrace"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 libc = "0.2"

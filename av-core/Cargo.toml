@@ -2,6 +2,15 @@
 name = "av-core"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core scanning primitives for WinnCoreAV (ARM64-native Linux EDR)"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-core"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "scanner"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -31,7 +40,7 @@ zeroize = { version = "1.7", features = ["derive"] }
 libc = "0.2"
 
 # ML detector (CRITICAL - was missing!)
-av-ml-detector = { path = "../av-ml-detector" }
+av-ml-detector = { path = "../av-ml-detector", version = "0.1.0" }
 
 [features]
 default = ["telemetry-file"]
@@ -40,7 +49,7 @@ telemetry-http = ["reqwest"]
 
 [dev-dependencies]
 tempfile = "3.10"
-av-quarantine = { path = "../av-quarantine" }
+av-quarantine = { path = "../av-quarantine", version = "0.1.0" }
 sysinfo = "0.30"
 humantime = "2.1"
 criterion = "0.5"

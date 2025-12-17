@@ -3,7 +3,7 @@
 //! Keep these repr(C) layouts stable; both kernel-side probes and userspace
 //! parsers depend on the exact field ordering and sizing.
 
-#![cfg_attr(feature = "bpf", no_std)]
+#![cfg_attr(all(feature = "bpf", not(feature = "user")), no_std)]
 #![allow(dead_code)]
 
 #[cfg(feature = "user")]

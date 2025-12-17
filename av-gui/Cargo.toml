@@ -2,7 +2,16 @@
 name = "av-gui"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "WinnCoreAV Desktop Interface"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-gui"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "gui"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }

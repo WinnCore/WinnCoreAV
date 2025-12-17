@@ -5,12 +5,19 @@ authors.workspace = true
 license.workspace = true
 version.workspace = true
 publish = false
+description = "Command-line interface for WinnCoreAV scanning and quarantine operations"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-cli"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
-av-core = { path = "../av-core" }
-av-quarantine = { path = "../av-quarantine" }
-av-signatures = { path = "../av-signatures" }
-av-ml-detector = { path = "../av-ml-detector" }
+av-core = { path = "../av-core", version = "0.1.0" }
+av-quarantine = { path = "../av-quarantine", version = "0.1.0" }
+av-signatures = { path = "../av-signatures", version = "0.1.0" }
+av-ml-detector = { path = "../av-ml-detector", version = "0.1.0" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

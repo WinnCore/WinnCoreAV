@@ -2,8 +2,15 @@
 name = "av-response"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Automated response actions for WinnCore"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-response"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "response"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

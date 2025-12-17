@@ -5,6 +5,12 @@ version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+description = "eBPF collection and helpers for WinnCoreAV telemetry and detections"
+documentation = "https://docs.rs/av-ebpf"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "ebpf"]
+categories = ["command-line-utilities", "development-tools"]
 
 [features]
 default = []

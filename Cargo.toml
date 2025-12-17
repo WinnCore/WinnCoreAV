@@ -26,7 +26,6 @@ members = [
     "av-attack-sim",
     "winncore-monitor",
     "av-watchdog",
-    "av-gui",
 ]
 default-members = [
     "av-core",
@@ -59,9 +58,10 @@ default-members = [
 [workspace.package]
 edition = "2021"
 version = "0.1.0"
-authors = ["WinnCore Team"]
-license = "MIT"
+authors = ["Zachary Winn <zw@winncore.com>"]
+license = "Apache-2.0"
 repository = "https://github.com/WinnCore/WinnCoreAV"
+homepage = "https://github.com/WinnCore/WinnCoreAV"
 
 [workspace.dependencies]
 anyhow = "1.0"

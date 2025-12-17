@@ -2,8 +2,15 @@
 name = "av-fileless"
 version = "0.1.0"
 edition = "2021"
+authors.workspace = true
+license.workspace = true
 description = "Fileless malware detection for WinnCore EDR"
-publish = false
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/av-fileless"
+readme = "README.md"
+keywords = ["security", "edr", "arm64", "antivirus", "fileless"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 libc = "0.2"

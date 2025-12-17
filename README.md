@@ -1,5 +1,8 @@
 # WinnCoreAV
 
+[![CI](https://github.com/WinnCore/WinnCoreAV/actions/workflows/ci.yml/badge.svg)](https://github.com/WinnCore/WinnCoreAV/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+
 ARM64-native endpoint detection for Linux. Written in Rust.
 
 Most EDR tools bolt on ARM64 support as an afterthought. This was built for ARM64 from day one - Graviton, Apple Silicon, Snapdragon X, Pi.

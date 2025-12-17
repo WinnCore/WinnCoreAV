@@ -1,5 +1,0 @@
-    Checking av-signatures v0.1.0 (/home/zacharywinn/projects/WinnCoreAV/av-signatures)
- Documenting av-deception v0.1.0 (/home/zacharywinn/projects/WinnCoreAV/av-deception)
- Documenting av-cli v0.1.0 (/home/zacharywinn/projects/WinnCoreAV/av-cli)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.26s
-   Generated /home/zacharywinn/projects/WinnCoreAV/target/doc/av_arm64_hw/index.html and 25 other files

@@ -28,3 +28,4 @@ Thumbs.db
 # Test artifacts
 /test-results/
 /coverage/
+*.txt

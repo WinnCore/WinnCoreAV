@@ -1,0 +1,12 @@
+# Local build config for eBPF probes.
+#
+# The workspace-wide `.cargo/config.toml` enables hardened linker flags for
+# user-space binaries, but those flags are not compatible with `bpf-linker`.
+
+[build]
+rustflags = []
+
+[target.bpfel-unknown-none]
+linker = "bpf-linker"
+rustflags = ["-C", "link-arg=--btf"]
+

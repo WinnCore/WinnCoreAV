@@ -402,6 +402,8 @@ dependencies = [
  "av-containers",
  "av-core",
  "av-ebpf-common",
+ "av-ebpf-detect",
+ "av-ebpf-loader",
  "av-memory",
  "av-response",
  "av-rootkit",
@@ -496,7 +498,7 @@ name = "av-ebpf-loader"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "aya 0.12.0",
+ "aya 0.13.1",
  "aya-log",
  "libbpf-cargo",
  "libc",

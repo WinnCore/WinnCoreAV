@@ -4,14 +4,11 @@ use std::path::Path;
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
+use av_ebpf_loader::{load_and_attach, resolve_bpf_object_path, EbpfAttachConfig, EbpfLoadConfig};
+
 const BPF_PIN_PATH: &str = "/sys/fs/bpf/winncore";
 const FALLBACK_MARKER: &str = "/var/lib/winncore/state/ebpf_fallback";
 const FALLBACK_REASON: &str = "/var/lib/winncore/state/ebpf_fallback_reason";
-
-#[derive(Debug)]
-enum LoadResult {
-    Fallback(String),
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -27,26 +24,51 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    match load_and_pin().await {
-        LoadResult::Fallback(reason) => {
+    let Some(object_path) = resolve_bpf_object_path() else {
+        let reason =
+            "eBPF object not found (set WINNCORE_EBPF_OBJECT or build av-ebpf-probes)".to_string();
+        warn!("⚠️  eBPF loader falling back: {}", reason);
+        create_fallback_marker(&reason)?;
+        std::process::exit(0);
+    };
+
+    if !Path::new("/sys/fs/bpf").exists() {
+        let reason = "BPF filesystem not mounted at /sys/fs/bpf".to_string();
+        warn!("⚠️  eBPF loader falling back: {}", reason);
+        create_fallback_marker(&reason)?;
+        std::process::exit(0);
+    }
+
+    // Create the pin dir for compatibility with self-protection checks.
+    if let Err(e) = fs::create_dir_all(BPF_PIN_PATH) {
+        let reason = format!("Cannot create pin dir: {}", e);
+        warn!("⚠️  eBPF loader falling back: {}", reason);
+        create_fallback_marker(&reason)?;
+        std::process::exit(0);
+    }
+
+    let config = EbpfLoadConfig {
+        object_path,
+        attach: EbpfAttachConfig::default(),
+    };
+
+    let bpf = match load_and_attach(&config) {
+        Ok(bpf) => bpf,
+        Err(e) => {
+            let reason = format!("eBPF load/attach failed: {}", e);
             warn!("⚠️  eBPF loader falling back: {}", reason);
             create_fallback_marker(&reason)?;
             std::process::exit(0);
         }
-    }
-}
+    };
 
-async fn load_and_pin() -> LoadResult {
-    if !Path::new("/sys/fs/bpf").exists() {
-        return LoadResult::Fallback("BPF filesystem not mounted at /sys/fs/bpf".into());
-    }
+    info!("eBPF programs loaded and attached; waiting for shutdown signal");
 
-    if let Err(e) = fs::create_dir_all(BPF_PIN_PATH) {
-        return LoadResult::Fallback(format!("Cannot create pin dir: {}", e));
-    }
-
-    // Real eBPF loading to be implemented; currently create fallback marker
-    LoadResult::Fallback("eBPF bytecode loading not implemented yet".into())
+    // Keep programs attached for the lifetime of this process.
+    let _bpf = bpf;
+    tokio::signal::ctrl_c().await.ok();
+    info!("eBPF loader exiting");
+    Ok(())
 }
 
 fn create_fallback_marker(reason: &str) -> Result<()> {

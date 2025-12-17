@@ -7,7 +7,10 @@ use av_behavioral::rules::{
     WebShellSeverity,
 };
 use av_behavioral::Allowlist;
-use av_ebpf_common::ProcessExecEvent;
+use av_ebpf_common::{
+    FileAccessEvent, FileAccessType, KernelModuleEvent, NetworkConnectEvent, ProcessExecEvent,
+    PtraceEvent,
+};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -37,6 +40,19 @@ pub struct BehavioralAlert {
 #[derive(Debug)]
 pub enum BehavioralEvent {
     ProcessExec(ProcessExecEvent),
+    /// Process execution observed via eBPF (kernel trace).
+    #[allow(dead_code)]
+    ProcessExecEbpf(ProcessExecEvent),
+    #[allow(dead_code)]
+    NetworkConnect(NetworkConnectEvent),
+    #[allow(dead_code)]
+    FileAccess(FileAccessEvent),
+    #[allow(dead_code)]
+    Ptrace(PtraceEvent),
+    #[allow(dead_code)]
+    KernelModule(KernelModuleEvent),
+    /// Periodic eBPF program integrity/rootkit signal (from av-ebpf-detect).
+    EbpfProgramThreat { severity: String, description: String },
 }
 
 pub struct BehavioralRuntime {
@@ -79,6 +95,21 @@ struct SyntheticAlertTemplate<'a> {
     source: &'a str,
 }
 
+struct EbpfAlertTemplate<'a> {
+    rule_id: &'a str,
+    name: &'a str,
+    severity: &'a str,
+    technique: &'a str,
+    tactic: &'a str,
+}
+
+struct EbpfAlertData {
+    pid: u32,
+    ppid: u32,
+    cmdline: String,
+    description: String,
+}
+
 impl BehavioralPipeline {
     pub async fn new(config: BehavioralConfig) -> anyhow::Result<Self> {
         let mut engine = RuleEngine::new();
@@ -102,6 +133,41 @@ impl BehavioralPipeline {
         match event {
             BehavioralEvent::ProcessExec(proc_evt) => {
                 self.handle_process_exec(proc_evt, alert_tx).await;
+            }
+            BehavioralEvent::ProcessExecEbpf(proc_evt) => {
+                self.handle_process_exec(proc_evt, alert_tx).await;
+                self.handle_ebpf_exec_detections(proc_evt, alert_tx).await;
+            }
+            BehavioralEvent::NetworkConnect(net_evt) => {
+                self.handle_network_connect(net_evt, alert_tx).await;
+            }
+            BehavioralEvent::FileAccess(file_evt) => {
+                self.handle_file_access(file_evt, alert_tx).await;
+            }
+            BehavioralEvent::Ptrace(ptrace_evt) => {
+                self.handle_ptrace(ptrace_evt, alert_tx).await;
+            }
+            BehavioralEvent::KernelModule(km_evt) => {
+                self.handle_kernel_module(km_evt, alert_tx).await;
+            }
+            BehavioralEvent::EbpfProgramThreat { severity, description } => {
+                self.emit_ebpf_alert(
+                    EbpfAlertTemplate {
+                        rule_id: "EBPF-900",
+                        name: "Suspicious eBPF Program Activity",
+                        severity: &severity,
+                        technique: "T1014",
+                        tactic: "Defense Evasion",
+                    },
+                    EbpfAlertData {
+                        pid: 0,
+                        ppid: 0,
+                        cmdline: String::new(),
+                        description,
+                    },
+                    alert_tx,
+                )
+                .await;
             }
         }
     }
@@ -390,6 +456,233 @@ impl BehavioralPipeline {
             error!(error = %e, "Failed to persist synthetic alert");
         }
     }
+
+    async fn handle_ebpf_exec_detections(
+        &self,
+        event: ProcessExecEvent,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        let exe = event.filename_str();
+        if exe.is_empty() {
+            return;
+        }
+
+        // Fileless execution via memfd (common in in-memory malware / staging).
+        if exe.contains("memfd:") {
+            self.emit_ebpf_alert(
+                EbpfAlertTemplate {
+                    rule_id: "EBPF-001",
+                    name: "Fileless Execution via memfd",
+                    severity: "critical",
+                    technique: "T1620",
+                    tactic: "Defense Evasion",
+                },
+                EbpfAlertData {
+                    pid: event.pid,
+                    ppid: event.ppid,
+                    cmdline: event.args_str().to_string(),
+                    description: format!("Fileless execution detected: {}", exe),
+                },
+                alert_tx,
+            )
+            .await;
+        }
+
+        // Execution from world-writable staging locations.
+        if exe.starts_with("/tmp/")
+            || exe.starts_with("/dev/shm/")
+            || exe.starts_with("/var/tmp/")
+        {
+            self.emit_ebpf_alert(
+                EbpfAlertTemplate {
+                    rule_id: "EBPF-002",
+                    name: "Execution from World-Writable Directory",
+                    severity: "high",
+                    technique: "T1059",
+                    tactic: "Execution",
+                },
+                EbpfAlertData {
+                    pid: event.pid,
+                    ppid: event.ppid,
+                    cmdline: event.args_str().to_string(),
+                    description: format!("Execution from suspicious path: {}", exe),
+                },
+                alert_tx,
+            )
+            .await;
+        }
+    }
+
+    async fn handle_network_connect(
+        &self,
+        event: NetworkConnectEvent,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        // Common C2/backdoor ports.
+        let suspicious_ports = [4444u16, 5555, 6666, 1337, 31337, 12345, 9001];
+        if !suspicious_ports.contains(&event.dest_port) {
+            return;
+        }
+
+        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
+        let dst = event.dest_addr_str();
+
+        self.emit_ebpf_alert(
+            EbpfAlertTemplate {
+                rule_id: "EBPF-010",
+                name: "Connection to Known Malicious Port",
+                severity: "high",
+                technique: "T1571",
+                tactic: "Command and Control",
+            },
+            EbpfAlertData {
+                pid: event.pid,
+                ppid,
+                cmdline,
+                description: format!("Suspicious outbound connection: {}:{}", dst, event.dest_port),
+            },
+            alert_tx,
+        )
+        .await;
+    }
+
+    async fn handle_file_access(
+        &self,
+        event: FileAccessEvent,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        if event.access_type == FileAccessType::Normal {
+            return;
+        }
+
+        let path = std::str::from_utf8(&event.filename)
+            .unwrap_or("")
+            .trim_end_matches('\0')
+            .to_string();
+
+        let (severity, technique) = match event.access_type {
+            FileAccessType::Credential => ("high", "T1003"),
+            FileAccessType::SshKey => ("medium", "T1552.004"),
+            FileAccessType::BrowserCreds => ("medium", "T1555.003"),
+            FileAccessType::SensitiveConfig => ("medium", "T1552.001"),
+            FileAccessType::Normal => ("low", "T1552.001"),
+        };
+
+        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
+
+        self.emit_ebpf_alert(
+            EbpfAlertTemplate {
+                rule_id: "EBPF-020",
+                name: "Credential File Access",
+                severity,
+                technique,
+                tactic: "Credential Access",
+            },
+            EbpfAlertData {
+                pid: event.pid,
+                ppid,
+                cmdline,
+                description: format!("Sensitive file access detected: {}", path),
+            },
+            alert_tx,
+        )
+        .await;
+    }
+
+    async fn handle_ptrace(&self, event: PtraceEvent, alert_tx: &mpsc::Sender<BehavioralAlert>) {
+        // PTRACE_ATTACH (16) / PTRACE_SEIZE (0x4206) are strong injection signals.
+        if event.request != 16 && event.request != 0x4206 {
+            return;
+        }
+
+        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
+
+        self.emit_ebpf_alert(
+            EbpfAlertTemplate {
+                rule_id: "EBPF-030",
+                name: "Process Injection via ptrace",
+                severity: "critical",
+                technique: "T1055.008",
+                tactic: "Defense Evasion",
+            },
+            EbpfAlertData {
+                pid: event.pid,
+                ppid,
+                cmdline,
+                description: format!(
+                    "ptrace attach/seize detected: pid {} targeting pid {} (request {})",
+                    event.pid, event.target_pid, event.request
+                ),
+            },
+            alert_tx,
+        )
+        .await;
+    }
+
+    async fn handle_kernel_module(
+        &self,
+        event: KernelModuleEvent,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        let module = std::str::from_utf8(&event.module_name)
+            .unwrap_or("")
+            .trim_end_matches('\0');
+        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
+
+        self.emit_ebpf_alert(
+            EbpfAlertTemplate {
+                rule_id: "EBPF-040",
+                name: "Kernel Module Loading",
+                severity: "critical",
+                technique: "T1547.006",
+                tactic: "Defense Evasion",
+            },
+            EbpfAlertData {
+                pid: event.pid,
+                ppid,
+                cmdline,
+                description: if module.is_empty() {
+                    "Kernel module insertion detected".to_string()
+                } else {
+                    format!("Kernel module insertion detected: {}", module)
+                },
+            },
+            alert_tx,
+        )
+        .await;
+    }
+
+    async fn emit_ebpf_alert(
+        &self,
+        template: EbpfAlertTemplate<'_>,
+        data: EbpfAlertData,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        let alert = BehavioralAlert {
+            rule_id: template.rule_id.to_string(),
+            name: template.name.to_string(),
+            severity: template.severity.to_string(),
+            technique: template.technique.to_string(),
+            tactic: template.tactic.to_string(),
+            pid: data.pid,
+            ppid: data.ppid,
+            cmdline: data.cmdline,
+            description: data.description,
+            timestamp: Utc::now(),
+            matched: Vec::new(),
+            source: "ebpf".to_string(),
+        };
+
+        if let Err(e) = alert_tx.send(alert.clone()).await {
+            warn!(error = %e, "Failed to enqueue eBPF alert");
+        }
+
+        if let Err(e) = persist_alert_line(&self.config.alert_log_path, &alert).await {
+            error!(error = %e, "Failed to persist eBPF alert");
+        }
+
+        self.response.respond(template.severity, data.pid, None);
+    }
 }
 
 fn obfuscation_metadata(
@@ -588,6 +881,29 @@ async fn read_proc_comm(pid: u32) -> Option<String> {
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
+}
+
+async fn read_proc_ppid_cmdline(pid: u32) -> (u32, String) {
+    let ppid = fs::read_to_string(format!("/proc/{}/stat", pid))
+        .await
+        .ok()
+        .and_then(|stat| {
+            let close_paren = stat.rfind(')')?;
+            let after_comm = &stat[close_paren + 2..];
+            let fields: Vec<&str> = after_comm.split_whitespace().collect();
+            fields.get(1).and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(0);
+
+    let cmdline_bytes = fs::read(format!("/proc/{}/cmdline", pid))
+        .await
+        .unwrap_or_default();
+    let cmdline = String::from_utf8_lossy(&cmdline_bytes)
+        .replace('\0', " ")
+        .trim()
+        .to_string();
+
+    (ppid, cmdline)
 }
 
 fn webshell_severity_to_str(sev: WebShellSeverity) -> &'static str {

@@ -27,6 +27,7 @@ members = [
     "winncore-monitor",
     "av-watchdog",
 ]
+exclude = ["av-ebpf-probes"]
 default-members = [
     "av-core",
     "av-cli",

@@ -13,6 +13,7 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use sd_notify::NotifyState;
@@ -32,6 +33,8 @@ mod landlock;
 mod memory_audit;
 mod metrics;
 mod namespaces;
+#[cfg(feature = "behavior_monitor")]
+mod ebpf_monitor;
 mod process_monitor;
 mod response;
 mod security;
@@ -141,12 +144,95 @@ async fn main() -> Result<()> {
     let mut alert_rx = behavioral_runtime.alert_rx;
     let siem_output = SiemOutput::new(daemon_cfg.siem.clone());
 
-    // Real procfs monitor to generate execution events.
-    info!("Starting process monitor...");
-    let process_monitor_cfg = ProcessMonitorConfig::default();
-    let _process_monitor_handle =
-        spawn_process_monitor(process_monitor_cfg, behavioral_runtime.event_tx.clone());
-    info!("Process monitor spawned");
+    #[cfg(feature = "behavior_monitor")]
+    let mut ebpf_active = false;
+    #[cfg(not(feature = "behavior_monitor"))]
+    let ebpf_active = false;
+
+    #[cfg(feature = "behavior_monitor")]
+    let mut _ebpf_handle: Option<ebpf_monitor::EbpfMonitorHandle> = None;
+
+    #[cfg(feature = "behavior_monitor")]
+    {
+        let enabled = std::env::var("WINNCORE_ENABLE_EBPF")
+            .ok()
+            .map(|v| v != "0" && v.to_lowercase() != "false")
+            .unwrap_or(true);
+
+        if enabled && ebpf_monitor::ebpf_available() && ebpf_monitor::has_ebpf_permissions() {
+            match ebpf_monitor::EbpfMonitor::new(
+                ebpf_monitor::EbpfMonitorConfig::default(),
+                behavioral_runtime.event_tx.clone(),
+            )
+            .start()
+            .await
+            {
+                Ok(handle) => {
+                    info!("eBPF monitor started; disabling procfs polling monitor");
+                    ebpf_active = true;
+                    _ebpf_handle = Some(handle);
+                }
+                Err(e) => {
+                    warn!(error = %e, "eBPF monitor failed to start; falling back to procfs polling");
+                }
+            }
+        } else {
+            warn!("eBPF unavailable/disabled; using procfs polling only");
+        }
+    }
+
+    if !ebpf_active {
+        // Procfs monitor to generate execution events.
+        info!("Starting process monitor...");
+        let process_monitor_cfg = ProcessMonitorConfig::default();
+        let _process_monitor_handle =
+            spawn_process_monitor(process_monitor_cfg, behavioral_runtime.event_tx.clone());
+        info!("Process monitor spawned");
+    }
+
+    // Periodic eBPF program integrity/rootkit monitor (best effort).
+    let ebpf_detect_tx = behavioral_runtime.event_tx.clone();
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(Duration::from_secs(600));
+        let baseline = av_ebpf_detect::BpfBaseline::create_from_current();
+        loop {
+            ticker.tick().await;
+            let programs = av_ebpf_detect::enumerate_bpf_programs();
+            if programs.is_empty() {
+                continue;
+            }
+
+            let analysis = av_ebpf_detect::analyze_bpf_programs(&programs, &baseline);
+            if !analysis.possible_rootkit && analysis.risk_score < 100 {
+                continue;
+            }
+
+            let severity = if analysis.possible_rootkit {
+                "critical"
+            } else if analysis.risk_score >= 200 {
+                "high"
+            } else {
+                "medium"
+            };
+
+            let description = format!(
+                "eBPF program anomaly: risk_score={} total={} unknown={} high_risk={} suspicious_combos={} possible_rootkit={}",
+                analysis.risk_score,
+                analysis.total_programs,
+                analysis.unknown_programs.len(),
+                analysis.high_risk_programs.len(),
+                analysis.suspicious_combinations.len(),
+                analysis.possible_rootkit
+            );
+
+            let _ = ebpf_detect_tx
+                .send(behavioral_pipeline::BehavioralEvent::EbpfProgramThreat {
+                    severity: severity.to_string(),
+                    description,
+                })
+                .await;
+        }
+    });
 
     tokio::spawn(async move {
         info!("Alert receiver started");

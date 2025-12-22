@@ -140,4 +140,3 @@ mod tests {
         assert_eq!(parsed["threat"]["technique"]["id"], "T1059.004");
     }
 }
-

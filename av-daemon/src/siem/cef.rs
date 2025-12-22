@@ -62,10 +62,7 @@ impl AlertFormatter for CefFormatter {
 
         // Process info
         if let Some(ref proc_ctx) = alert.process {
-            extensions.push(format!(
-                "dproc={}",
-                Self::escape_extension(&proc_ctx.name)
-            ));
+            extensions.push(format!("dproc={}", Self::escape_extension(&proc_ctx.name)));
             extensions.push(format!("dpid={}", proc_ctx.pid));
             if let Some(ref exe) = proc_ctx.exe_path {
                 extensions.push(format!("filePath={}", Self::escape_extension(exe)));
@@ -168,4 +165,3 @@ mod tests {
         assert!(cef.contains("cs2=T1027"));
     }
 }
-

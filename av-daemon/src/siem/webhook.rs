@@ -23,9 +23,15 @@ pub struct WebhookSender {
 pub enum WebhookAuth {
     None,
     Bearer(String),
-    Basic { username: String, password: String },
+    Basic {
+        username: String,
+        password: String,
+    },
     SplunkHec(String), // Splunk HEC token
-    Custom { header_name: String, header_value: String },
+    Custom {
+        header_name: String,
+        header_value: String,
+    },
 }
 
 impl WebhookSender {
@@ -47,8 +53,12 @@ impl WebhookSender {
         match &self.auth {
             WebhookAuth::None => request,
             WebhookAuth::Bearer(token) => request.bearer_auth(token),
-            WebhookAuth::Basic { username, password } => request.basic_auth(username, Some(password)),
-            WebhookAuth::SplunkHec(token) => request.header("Authorization", format!("Splunk {}", token)),
+            WebhookAuth::Basic { username, password } => {
+                request.basic_auth(username, Some(password))
+            }
+            WebhookAuth::SplunkHec(token) => {
+                request.header("Authorization", format!("Splunk {}", token))
+            }
             WebhookAuth::Custom {
                 header_name,
                 header_value,

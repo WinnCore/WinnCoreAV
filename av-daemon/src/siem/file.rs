@@ -125,7 +125,8 @@ mod tests {
 
     #[tokio::test]
     async fn writes_jsonl_line() {
-        let tmp = std::env::temp_dir().join(format!("winncore-alerts-{}.jsonl", uuid::Uuid::new_v4()));
+        let tmp =
+            std::env::temp_dir().join(format!("winncore-alerts-{}.jsonl", uuid::Uuid::new_v4()));
         let sender = FileAlertSender::new(tmp.clone(), Box::new(JsonFormatter::default()));
 
         let alert = Alert::new(
@@ -143,4 +144,3 @@ mod tests {
         let _ = tokio::fs::remove_file(&tmp).await;
     }
 }
-

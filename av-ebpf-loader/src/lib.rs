@@ -75,7 +75,10 @@ pub fn bump_memlock_rlimit() -> Result<()> {
         };
 
         if libc::setrlimit(libc::RLIMIT_MEMLOCK, &lim) != 0 {
-            return Err(anyhow!("setrlimit(RLIMIT_MEMLOCK) failed: {}", std::io::Error::last_os_error()));
+            return Err(anyhow!(
+                "setrlimit(RLIMIT_MEMLOCK) failed: {}",
+                std::io::Error::last_os_error()
+            ));
         }
     }
 
@@ -85,64 +88,75 @@ pub fn bump_memlock_rlimit() -> Result<()> {
 pub fn load_and_attach(config: &EbpfLoadConfig) -> Result<Ebpf> {
     bump_memlock_rlimit().ok();
 
-    let mut bpf =
-        Ebpf::load_file(&config.object_path).with_context(|| {
-            format!(
-                "failed to load eBPF object from {}",
-                config.object_path.display()
-            )
-        })?;
+    let mut bpf = Ebpf::load_file(&config.object_path).with_context(|| {
+        format!(
+            "failed to load eBPF object from {}",
+            config.object_path.display()
+        )
+    })?;
 
     if let Err(e) = aya_log::EbpfLogger::init(&mut bpf) {
         debug!(error = %e, "eBPF logger not initialized");
     }
 
     if config.attach.execve {
-        attach_kprobe_any(&mut bpf, "kprobe_execve", &[
-            "__x64_sys_execve",
-            "__arm64_sys_execve",
-            "__se_sys_execve",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_execve",
+            &["__x64_sys_execve", "__arm64_sys_execve", "__se_sys_execve"],
+        )?;
     }
 
     if config.attach.execveat {
-        attach_kprobe_any(&mut bpf, "kprobe_execveat", &[
-            "__x64_sys_execveat",
-            "__arm64_sys_execveat",
-            "__se_sys_execveat",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_execveat",
+            &[
+                "__x64_sys_execveat",
+                "__arm64_sys_execveat",
+                "__se_sys_execveat",
+            ],
+        )?;
     }
 
     if config.attach.connect {
-        attach_kprobe_any(&mut bpf, "kprobe_connect", &[
-            "__x64_sys_connect",
-            "__arm64_sys_connect",
-            "__se_sys_connect",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_connect",
+            &[
+                "__x64_sys_connect",
+                "__arm64_sys_connect",
+                "__se_sys_connect",
+            ],
+        )?;
     }
 
     if config.attach.openat {
-        attach_kprobe_any(&mut bpf, "kprobe_openat", &[
-            "__x64_sys_openat",
-            "__arm64_sys_openat",
-            "__se_sys_openat",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_openat",
+            &["__x64_sys_openat", "__arm64_sys_openat", "__se_sys_openat"],
+        )?;
     }
 
     if config.attach.ptrace {
-        attach_kprobe_any(&mut bpf, "kprobe_ptrace", &[
-            "__x64_sys_ptrace",
-            "__arm64_sys_ptrace",
-            "__se_sys_ptrace",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_ptrace",
+            &["__x64_sys_ptrace", "__arm64_sys_ptrace", "__se_sys_ptrace"],
+        )?;
     }
 
     if config.attach.init_module {
-        attach_kprobe_any(&mut bpf, "kprobe_init_module", &[
-            "__x64_sys_init_module",
-            "__arm64_sys_init_module",
-            "__se_sys_init_module",
-        ])?;
+        attach_kprobe_any(
+            &mut bpf,
+            "kprobe_init_module",
+            &[
+                "__x64_sys_init_module",
+                "__arm64_sys_init_module",
+                "__se_sys_init_module",
+            ],
+        )?;
     }
 
     Ok(bpf)
@@ -163,7 +177,11 @@ fn attach_kprobe_any(bpf: &mut Ebpf, program_name: &str, candidates: &[&str]) ->
     for candidate in candidates {
         match program.attach(candidate, 0) {
             Ok(_) => {
-                info!(program = program_name, target = *candidate, "Attached kprobe");
+                info!(
+                    program = program_name,
+                    target = *candidate,
+                    "Attached kprobe"
+                );
                 return Ok(());
             }
             Err(e) => {

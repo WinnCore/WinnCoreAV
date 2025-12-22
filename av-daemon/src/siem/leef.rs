@@ -52,15 +52,15 @@ impl AlertFormatter for LeefFormatter {
                 "mitreTechnique={}",
                 Self::escape_value(&mitre.technique_id)
             ));
-            fields.push(format!(
-                "mitreTactic={}",
-                Self::escape_value(&mitre.tactic)
-            ));
+            fields.push(format!("mitreTactic={}", Self::escape_value(&mitre.tactic)));
         }
 
         if let Some(ref proc_ctx) = alert.process {
             fields.push(format!("pid={}", proc_ctx.pid));
-            fields.push(format!("processName={}", Self::escape_value(&proc_ctx.name)));
+            fields.push(format!(
+                "processName={}",
+                Self::escape_value(&proc_ctx.name)
+            ));
             if let Some(ref cmdline) = proc_ctx.cmdline {
                 fields.push(format!("commandLine={}", Self::escape_value(cmdline)));
             }
@@ -129,4 +129,3 @@ mod tests {
         assert!(msg.contains("msg=hello"));
     }
 }
-

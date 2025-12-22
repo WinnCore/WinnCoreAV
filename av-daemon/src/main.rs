@@ -26,6 +26,8 @@ mod aslr_verify;
 mod behavioral_pipeline;
 mod circuit_breaker;
 mod config;
+#[cfg(feature = "behavior_monitor")]
+mod ebpf_monitor;
 mod error;
 mod hardening;
 mod health;
@@ -35,8 +37,6 @@ mod landlock;
 mod memory_audit;
 mod metrics;
 mod namespaces;
-#[cfg(feature = "behavior_monitor")]
-mod ebpf_monitor;
 mod process_monitor;
 mod response;
 mod security;
@@ -44,7 +44,9 @@ mod shutdown;
 mod siem;
 mod watchdog;
 
-use behavioral_pipeline::{log_alert, start_behavioral_pipeline, BehavioralAlert, BehavioralConfig};
+use behavioral_pipeline::{
+    log_alert, start_behavioral_pipeline, BehavioralAlert, BehavioralConfig,
+};
 use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use error::Subsystem;
 use hardening::{init_all_hardening, start_background_hardening, HardeningConfig};
@@ -103,7 +105,14 @@ fn behavioral_alert_to_unified(alert: &BehavioralAlert) -> crate::alert::Alert {
     if !alert.matched.is_empty() {
         out.custom_fields.insert(
             "matched".to_string(),
-            serde_json::Value::Array(alert.matched.iter().cloned().map(serde_json::Value::String).collect()),
+            serde_json::Value::Array(
+                alert
+                    .matched
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
         );
     }
     out.raw_event = serde_json::to_string(alert).ok();
@@ -200,8 +209,7 @@ async fn setup_siem(config: &crate::config::DaemonConfig) -> Arc<crate::siem::Al
 
                 if output.batch_size.unwrap_or(0) > 0 {
                     let batch_size = output.batch_size.unwrap_or(100);
-                    let batch_timeout =
-                        Duration::from_secs(output.batch_timeout_secs.unwrap_or(5));
+                    let batch_timeout = Duration::from_secs(output.batch_timeout_secs.unwrap_or(5));
                     Arc::new(BatchingWebhookSender::new(
                         output.name.clone(),
                         inner,
@@ -245,7 +253,10 @@ async fn setup_siem(config: &crate::config::DaemonConfig) -> Arc<crate::siem::Al
         router.add_route(route).await;
     }
 
-    info!("SIEM router configured with {} outputs", router.status().await.len());
+    info!(
+        "SIEM router configured with {} outputs",
+        router.status().await.len()
+    );
     router
 }
 

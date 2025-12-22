@@ -52,7 +52,10 @@ pub enum BehavioralEvent {
     #[allow(dead_code)]
     KernelModule(KernelModuleEvent),
     /// Periodic eBPF program integrity/rootkit signal (from av-ebpf-detect).
-    EbpfProgramThreat { severity: String, description: String },
+    EbpfProgramThreat {
+        severity: String,
+        description: String,
+    },
 }
 
 pub struct BehavioralRuntime {
@@ -150,7 +153,10 @@ impl BehavioralPipeline {
             BehavioralEvent::KernelModule(km_evt) => {
                 self.handle_kernel_module(km_evt, alert_tx).await;
             }
-            BehavioralEvent::EbpfProgramThreat { severity, description } => {
+            BehavioralEvent::EbpfProgramThreat {
+                severity,
+                description,
+            } => {
                 self.emit_ebpf_alert(
                     EbpfAlertTemplate {
                         rule_id: "EBPF-900",
@@ -489,9 +495,7 @@ impl BehavioralPipeline {
         }
 
         // Execution from world-writable staging locations.
-        if exe.starts_with("/tmp/")
-            || exe.starts_with("/dev/shm/")
-            || exe.starts_with("/var/tmp/")
+        if exe.starts_with("/tmp/") || exe.starts_with("/dev/shm/") || exe.starts_with("/var/tmp/")
         {
             self.emit_ebpf_alert(
                 EbpfAlertTemplate {
@@ -539,7 +543,10 @@ impl BehavioralPipeline {
                 pid: event.pid,
                 ppid,
                 cmdline,
-                description: format!("Suspicious outbound connection: {}:{}", dst, event.dest_port),
+                description: format!(
+                    "Suspicious outbound connection: {}:{}",
+                    dst, event.dest_port
+                ),
             },
             alert_tx,
         )

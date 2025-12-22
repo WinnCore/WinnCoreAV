@@ -29,7 +29,11 @@ pub enum SyslogTransport {
 }
 
 impl SyslogSender {
-    pub fn new(addr: SocketAddr, transport: SyslogTransport, formatter: Box<dyn AlertFormatter>) -> Self {
+    pub fn new(
+        addr: SocketAddr,
+        transport: SyslogTransport,
+        formatter: Box<dyn AlertFormatter>,
+    ) -> Self {
         Self {
             addr,
             transport,
@@ -51,9 +55,7 @@ impl SyslogSender {
         // <PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID STRUCTURED-DATA MSG
 
         let pri = (self.facility * 8) + alert.severity.to_syslog();
-        let timestamp = alert
-            .timestamp
-            .to_rfc3339_opts(SecondsFormat::Millis, true);
+        let timestamp = alert.timestamp.to_rfc3339_opts(SecondsFormat::Millis, true);
         let hostname = &alert.host.hostname;
         let procid = std::process::id();
         let msgid = &alert.rule_id;

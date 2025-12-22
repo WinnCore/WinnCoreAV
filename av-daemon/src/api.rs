@@ -89,10 +89,12 @@ async fn siem_status(State(state): State<ApiState>) -> Json<serde_json::Value> {
 
 async fn list_routes(State(state): State<ApiState>) -> Json<Vec<serde_json::Value>> {
     let routes = state.router.status().await;
-    Json(routes
-        .into_iter()
-        .map(|(name, enabled)| serde_json::json!({ "name": name, "enabled": enabled }))
-        .collect())
+    Json(
+        routes
+            .into_iter()
+            .map(|(name, enabled)| serde_json::json!({ "name": name, "enabled": enabled }))
+            .collect(),
+    )
 }
 
 async fn enable_route(State(state): State<ApiState>, Path(name): Path<String>) -> StatusCode {

@@ -142,10 +142,7 @@ impl AlertRouter {
 
     pub async fn status(&self) -> Vec<(String, bool)> {
         let routes = self.routes.read().await;
-        routes
-            .iter()
-            .map(|r| (r.name.clone(), r.enabled))
-            .collect()
+        routes.iter().map(|r| (r.name.clone(), r.enabled)).collect()
     }
 }
 

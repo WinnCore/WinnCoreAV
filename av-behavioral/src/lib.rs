@@ -9,6 +9,7 @@
 pub mod alerts;
 pub mod allowlist;
 pub mod correlation;
+pub mod detection;
 pub mod process_tree;
 pub mod rules;
 

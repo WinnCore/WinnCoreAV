@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Enterprise SIEM integration in `av-daemon` (unified alert schema, CEF/LEEF/JSON formatters, syslog/webhook/file outputs, routing, management API).
+- MITRE ATT&CK-aligned detection framework in `av-behavioral` (fileless, persistence, and C2 detectors with comprehensive unit/integration tests).
 
 ### Fixed
 - Updated Prometheus metrics dependencies to eliminate `protobuf` recursion crash advisory (RUSTSEC-2024-0437).

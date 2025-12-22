@@ -1,5 +1,8 @@
 use crate::heuristics::HeuristicAnalyzer;
 use crate::response::ResponseEngine;
+use av_behavioral::detection::{
+    command_and_control as det_c2, fileless as det_fileless, persistence as det_persistence,
+};
 use av_behavioral::rules::{
     check_cmdline_injection, check_container_escape_cmd, check_webshell_spawn, detect_cryptominer,
     detect_log_tampering, detect_obfuscation, detect_rootkit_command, AntiForensicsSeverity,
@@ -14,6 +17,7 @@ use av_ebpf_common::{
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::sync::mpsc;
@@ -86,6 +90,7 @@ pub struct BehavioralPipeline {
     response: ResponseEngine,
     config: BehavioralConfig,
     allowlist: Allowlist,
+    system_ld_so_preload_alerted: bool,
 }
 
 struct SyntheticAlertTemplate<'a> {
@@ -113,6 +118,14 @@ struct EbpfAlertData {
     description: String,
 }
 
+struct DetectionAlertData {
+    pid: u32,
+    ppid: u32,
+    cmdline: String,
+    matched: Vec<String>,
+    source: &'static str,
+}
+
 impl BehavioralPipeline {
     pub async fn new(config: BehavioralConfig) -> anyhow::Result<Self> {
         let mut engine = RuleEngine::new();
@@ -125,6 +138,7 @@ impl BehavioralPipeline {
             response: ResponseEngine::new(config.response.clone()),
             config,
             allowlist: Allowlist::new(),
+            system_ld_so_preload_alerted: false,
         })
     }
 
@@ -277,7 +291,7 @@ impl BehavioralPipeline {
     }
 
     async fn emit_detector_alerts(
-        &self,
+        &mut self,
         event: &ProcessExecEvent,
         cmdline: &str,
         parent_comm: Option<&str>,
@@ -430,6 +444,85 @@ impl BehavioralPipeline {
                 .await;
             }
         }
+
+        // High-fidelity technique-level detectors (MITRE-aligned).
+        if let Some(hit) = det_c2::detect_reverse_shell_cmdline(cmdline) {
+            let det_c2::ReverseShellAlert {
+                pattern_matched,
+                rule,
+                ..
+            } = hit;
+
+            if !matched_rule_ids.contains(&rule.id) {
+                self.emit_detection_rule_alert(
+                    rule,
+                    DetectionAlertData {
+                        pid: event.pid,
+                        ppid: event.ppid,
+                        cmdline: cmdline.to_string(),
+                        matched: vec![pattern_matched],
+                        source: "detector",
+                    },
+                    alert_tx,
+                )
+                .await;
+            }
+        }
+
+        if let Some(hit) = det_fileless::detect_memfd_execution(event.pid) {
+            let det_fileless::FilelessAlert { exe_path, rule, .. } = hit;
+
+            if !matched_rule_ids.contains(&rule.id) {
+                self.emit_detection_rule_alert(
+                    rule,
+                    DetectionAlertData {
+                        pid: event.pid,
+                        ppid: event.ppid,
+                        cmdline: cmdline.to_string(),
+                        matched: vec![exe_path],
+                        source: "detector",
+                    },
+                    alert_tx,
+                )
+                .await;
+            }
+        }
+
+        if let Some(hit) = det_fileless::detect_ld_preload_injection(event.pid) {
+            let det_fileless::FilelessAlert {
+                pid,
+                exe_path,
+                rule,
+                ..
+            } = hit;
+
+            if pid == 0 && self.system_ld_so_preload_alerted {
+                return;
+            }
+
+            if pid == 0 {
+                self.system_ld_so_preload_alerted = true;
+            }
+
+            if !matched_rule_ids.contains(&rule.id) {
+                self.emit_detection_rule_alert(
+                    rule,
+                    DetectionAlertData {
+                        pid,
+                        ppid: if pid == 0 { 0 } else { event.ppid },
+                        cmdline: if pid == 0 {
+                            String::new()
+                        } else {
+                            cmdline.to_string()
+                        },
+                        matched: vec![exe_path],
+                        source: "detector",
+                    },
+                    alert_tx,
+                )
+                .await;
+            }
+        }
     }
 
     async fn emit_synthetic_alert(
@@ -463,6 +556,41 @@ impl BehavioralPipeline {
         }
     }
 
+    async fn emit_detection_rule_alert(
+        &self,
+        rule: av_behavioral::detection::DetectionRule,
+        data: DetectionAlertData,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        let severity = detection_severity_to_str(rule.severity).to_string();
+        let alert = BehavioralAlert {
+            rule_id: rule.id,
+            name: rule.name,
+            severity: severity.clone(),
+            technique: rule.mitre.technique_id,
+            tactic: rule.mitre.tactic,
+            pid: data.pid,
+            ppid: data.ppid,
+            cmdline: data.cmdline,
+            description: rule.description,
+            timestamp: Utc::now(),
+            matched: data.matched,
+            source: data.source.to_string(),
+        };
+
+        if let Err(e) = alert_tx.send(alert.clone()).await {
+            warn!(error = %e, "Failed to enqueue detection alert");
+        }
+
+        if let Err(e) = persist_alert_line(&self.config.alert_log_path, &alert).await {
+            error!(error = %e, "Failed to persist detection alert");
+        }
+
+        if data.pid > 1 {
+            self.response.respond(&severity, data.pid, None);
+        }
+    }
+
     async fn handle_ebpf_exec_detections(
         &self,
         event: ProcessExecEvent,
@@ -471,27 +599,6 @@ impl BehavioralPipeline {
         let exe = event.filename_str();
         if exe.is_empty() {
             return;
-        }
-
-        // Fileless execution via memfd (common in in-memory malware / staging).
-        if exe.contains("memfd:") {
-            self.emit_ebpf_alert(
-                EbpfAlertTemplate {
-                    rule_id: "EBPF-001",
-                    name: "Fileless Execution via memfd",
-                    severity: "critical",
-                    technique: "T1620",
-                    tactic: "Defense Evasion",
-                },
-                EbpfAlertData {
-                    pid: event.pid,
-                    ppid: event.ppid,
-                    cmdline: event.args_str().to_string(),
-                    description: format!("Fileless execution detected: {}", exe),
-                },
-                alert_tx,
-            )
-            .await;
         }
 
         // Execution from world-writable staging locations.
@@ -522,31 +629,35 @@ impl BehavioralPipeline {
         event: NetworkConnectEvent,
         alert_tx: &mpsc::Sender<BehavioralAlert>,
     ) {
-        // Common C2/backdoor ports.
-        let suspicious_ports = [4444u16, 5555, 6666, 1337, 31337, 12345, 9001];
-        if !suspicious_ports.contains(&event.dest_port) {
+        let dst_ip = match event.family {
+            2 => IpAddr::V4(Ipv4Addr::from(event.dest_addr_v4.to_be_bytes())),
+            10 => IpAddr::V6(Ipv6Addr::from(event.dest_addr_v6)),
+            _ => return,
+        };
+
+        let comm = comm_from_bytes(&event.comm);
+        let Some(hit) =
+            det_c2::detect_suspicious_connection(event.pid, dst_ip, event.dest_port, &comm)
+        else {
             return;
-        }
+        };
+
+        let det_c2::C2Alert {
+            alert_type, rule, ..
+        } = hit;
 
         let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
-        let dst = event.dest_addr_str();
-
-        self.emit_ebpf_alert(
-            EbpfAlertTemplate {
-                rule_id: "EBPF-010",
-                name: "Connection to Known Malicious Port",
-                severity: "high",
-                technique: "T1571",
-                tactic: "Command and Control",
-            },
-            EbpfAlertData {
+        self.emit_detection_rule_alert(
+            rule,
+            DetectionAlertData {
                 pid: event.pid,
                 ppid,
                 cmdline,
-                description: format!(
-                    "Suspicious outbound connection: {}:{}",
-                    dst, event.dest_port
-                ),
+                matched: vec![
+                    format!("dst={}:{}", dst_ip, event.dest_port),
+                    format!("type={:?}", alert_type),
+                ],
+                source: "ebpf",
             },
             alert_tx,
         )
@@ -597,29 +708,25 @@ impl BehavioralPipeline {
     }
 
     async fn handle_ptrace(&self, event: PtraceEvent, alert_tx: &mpsc::Sender<BehavioralAlert>) {
-        // PTRACE_ATTACH (16) / PTRACE_SEIZE (0x4206) are strong injection signals.
-        if event.request != 16 && event.request != 0x4206 {
+        let Some(hit) =
+            det_fileless::detect_ptrace_injection(event.pid, event.target_pid, event.request)
+        else {
             return;
-        }
+        };
 
+        let det_fileless::FilelessAlert { rule, .. } = hit;
         let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
-
-        self.emit_ebpf_alert(
-            EbpfAlertTemplate {
-                rule_id: "EBPF-030",
-                name: "Process Injection via ptrace",
-                severity: "critical",
-                technique: "T1055.008",
-                tactic: "Defense Evasion",
-            },
-            EbpfAlertData {
+        self.emit_detection_rule_alert(
+            rule,
+            DetectionAlertData {
                 pid: event.pid,
                 ppid,
                 cmdline,
-                description: format!(
-                    "ptrace attach/seize detected: pid {} targeting pid {} (request {})",
-                    event.pid, event.target_pid, event.request
-                ),
+                matched: vec![
+                    format!("target_pid={}", event.target_pid),
+                    format!("request={}", event.request),
+                ],
+                source: "ebpf",
             },
             alert_tx,
         )
@@ -634,25 +741,24 @@ impl BehavioralPipeline {
         let module = std::str::from_utf8(&event.module_name)
             .unwrap_or("")
             .trim_end_matches('\0');
-        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
 
-        self.emit_ebpf_alert(
-            EbpfAlertTemplate {
-                rule_id: "EBPF-040",
-                name: "Kernel Module Loading",
-                severity: "critical",
-                technique: "T1547.006",
-                tactic: "Defense Evasion",
-            },
-            EbpfAlertData {
+        let comm = read_proc_comm(event.pid)
+            .await
+            .unwrap_or_else(|| "unknown".to_string());
+        let Some(hit) = det_persistence::detect_kernel_module_load(module, event.pid, &comm) else {
+            return;
+        };
+
+        let det_persistence::PersistenceAlert { rule, .. } = hit;
+        let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
+        self.emit_detection_rule_alert(
+            rule,
+            DetectionAlertData {
                 pid: event.pid,
                 ppid,
                 cmdline,
-                description: if module.is_empty() {
-                    "Kernel module insertion detected".to_string()
-                } else {
-                    format!("Kernel module insertion detected: {}", module)
-                },
+                matched: vec![format!("module={}", module)],
+                source: "ebpf",
             },
             alert_tx,
         )
@@ -879,6 +985,21 @@ fn severity_to_str(sev: &Severity) -> &'static str {
         Severity::High => "high",
         Severity::Critical => "critical",
     }
+}
+
+fn detection_severity_to_str(sev: av_behavioral::detection::Severity) -> &'static str {
+    match sev {
+        av_behavioral::detection::Severity::Info => "info",
+        av_behavioral::detection::Severity::Low => "low",
+        av_behavioral::detection::Severity::Medium => "medium",
+        av_behavioral::detection::Severity::High => "high",
+        av_behavioral::detection::Severity::Critical => "critical",
+    }
+}
+
+fn comm_from_bytes(bytes: &[u8]) -> String {
+    let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    String::from_utf8_lossy(&bytes[..len]).trim().to_string()
 }
 
 async fn read_proc_comm(pid: u32) -> Option<String> {

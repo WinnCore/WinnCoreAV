@@ -13,4 +13,67 @@ quarantine_dir = "/var/lib/winncore/quarantine"
 
 [behavioral]
 external_rules_dir = "/etc/winncore/rules"
-alert_log_path = "/var/log/winncore/alerts.json"
+alert_log_path = "/var/log/winncore/behavioral_alerts.jsonl"
+
+# SIEM Integration Configuration
+[siem]
+enabled = true
+local_log = true
+# Last-resort local buffer when no outputs deliver.
+buffer_path = "/var/log/winncore/alerts-buffer.jsonl"
+
+# Syslog output
+[[siem.outputs]]
+type = "syslog"
+name = "primary_syslog"
+enabled = true
+address = "10.0.0.50:514"
+transport = "udp" # udp, tcp, tcp_tls
+format = "cef"    # json, cef, leef
+min_severity = "low"
+
+# Splunk HEC output
+[[siem.outputs]]
+type = "webhook"
+name = "splunk_hec"
+enabled = false
+url = "https://splunk.example.com:8088/services/collector/event"
+auth_type = "splunk_hec"
+auth_token = "${SPLUNK_HEC_TOKEN}"
+format = "json"
+min_severity = "medium"
+batch_size = 100
+batch_timeout_secs = 5
+
+# Elastic output
+[[siem.outputs]]
+type = "webhook"
+name = "elastic"
+enabled = false
+url = "https://elastic.example.com:9200/winncore-alerts/_doc"
+auth_type = "bearer"
+auth_token = "${ELASTIC_API_KEY}"
+format = "json"
+min_severity = "low"
+
+# Custom webhook
+[[siem.outputs]]
+type = "webhook"
+name = "custom_webhook"
+enabled = false
+url = "https://security.example.com/api/alerts"
+auth_type = "bearer"
+auth_token = "${WEBHOOK_TOKEN}"
+format = "json"
+min_severity = "high"
+
+# File output (JSON lines)
+[[siem.outputs]]
+type = "file"
+name = "local_jsonl"
+enabled = true
+path = "/var/log/winncore/alerts.jsonl"
+format = "json"
+min_severity = "info"
+rotate_size_mb = 100
+rotate_keep = 10

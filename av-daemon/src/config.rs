@@ -21,7 +21,8 @@ pub struct DaemonConfig {
 impl DaemonConfig {
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let content = std::fs::read_to_string(path)?;
-        let config: DaemonConfig = toml::from_str(&content)?;
+        let mut config: DaemonConfig = toml::from_str(&content)?;
+        config.siem.resolve_env();
         info!(path = %path.display(), "Loaded daemon configuration");
         Ok(config)
     }

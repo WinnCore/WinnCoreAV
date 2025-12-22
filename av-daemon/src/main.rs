@@ -20,6 +20,8 @@ use sd_notify::NotifyState;
 use tokio::io::{stderr, stdout, AsyncWriteExt};
 use tracing::{info, warn};
 
+mod alert;
+mod api;
 mod aslr_verify;
 mod behavioral_pipeline;
 mod circuit_breaker;
@@ -42,7 +44,7 @@ mod shutdown;
 mod siem;
 mod watchdog;
 
-use behavioral_pipeline::{log_alert, start_behavioral_pipeline, BehavioralConfig};
+use behavioral_pipeline::{log_alert, start_behavioral_pipeline, BehavioralAlert, BehavioralConfig};
 use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use error::Subsystem;
 use hardening::{init_all_hardening, start_background_hardening, HardeningConfig};
@@ -51,7 +53,201 @@ use metrics::register_metrics;
 use process_monitor::{spawn_process_monitor, ProcessMonitorConfig};
 use security::start_security_tasks;
 use shutdown::install_signal_handlers;
-use siem::SiemOutput;
+
+fn behavioral_alert_to_unified(alert: &BehavioralAlert) -> crate::alert::Alert {
+    use crate::alert::{Alert, DetectionSource, ProcessContext, Severity};
+
+    let severity = alert
+        .severity
+        .parse::<Severity>()
+        .unwrap_or(Severity::Medium);
+
+    let proc_name = alert
+        .cmdline
+        .split_whitespace()
+        .next()
+        .unwrap_or("unknown")
+        .to_string();
+
+    let proc_ctx = ProcessContext {
+        pid: alert.pid,
+        ppid: Some(alert.ppid),
+        name: proc_name,
+        exe_path: None,
+        cmdline: Some(alert.cmdline.clone()),
+        username: None,
+        uid: None,
+        cwd: None,
+        start_time: None,
+    };
+
+    let mut out = Alert::new(
+        &alert.rule_id,
+        &alert.name,
+        &alert.description,
+        severity,
+        DetectionSource::Behavioral,
+    )
+    .with_mitre(&alert.technique)
+    .with_process(proc_ctx);
+
+    // Prefer pipeline-provided tactic when available.
+    if let Some(ref mut mitre) = out.mitre {
+        if (mitre.tactic == "Unknown" || mitre.tactic.is_empty()) && !alert.tactic.trim().is_empty()
+        {
+            mitre.tactic = alert.tactic.trim().to_string();
+        }
+    }
+
+    out.tags.push(format!("pipeline_source:{}", alert.source));
+    if !alert.matched.is_empty() {
+        out.custom_fields.insert(
+            "matched".to_string(),
+            serde_json::Value::Array(alert.matched.iter().cloned().map(serde_json::Value::String).collect()),
+        );
+    }
+    out.raw_event = serde_json::to_string(alert).ok();
+
+    out
+}
+
+async fn setup_siem(config: &crate::config::DaemonConfig) -> Arc<crate::siem::AlertRouter> {
+    use crate::siem::{
+        AlertFormatter, AlertRouter, AlertSender, BatchingWebhookSender, CefFormatter,
+        FileAlertSender, JsonFormatter, LeefFormatter, RouteConfig, SyslogSender, SyslogTransport,
+        WebhookAuth, WebhookSender,
+    };
+    use std::time::Duration;
+
+    let mut router = AlertRouter::new(config.siem.local_log);
+
+    // Optional last-resort buffering.
+    if let Some(ref buffer_path) = config.siem.buffer_path {
+        let buffer = FileAlertSender::new(buffer_path.clone(), Box::new(JsonFormatter::default()));
+        router = router.with_buffer_sender(Arc::new(buffer));
+    }
+
+    let router = Arc::new(router);
+
+    if !config.siem.enabled {
+        info!("SIEM integration disabled");
+        return router;
+    }
+
+    for output in &config.siem.outputs {
+        let format = output
+            .format
+            .as_deref()
+            .unwrap_or("json")
+            .trim()
+            .to_lowercase();
+
+        let formatter: Box<dyn AlertFormatter> = match format.as_str() {
+            "cef" => Box::new(CefFormatter::new()),
+            "leef" => Box::new(LeefFormatter::new()),
+            "json_pretty" | "jsonpretty" => Box::new(JsonFormatter::new(true)),
+            _ => Box::new(JsonFormatter::default()),
+        };
+
+        let sender: Arc<dyn AlertSender> = match output.output_type.trim().to_lowercase().as_str() {
+            "syslog" => {
+                let Some(address) = output.address.as_deref() else {
+                    warn!(route = %output.name, "Syslog output missing address");
+                    continue;
+                };
+
+                let addr = match address.parse() {
+                    Ok(a) => a,
+                    Err(e) => {
+                        warn!(route = %output.name, error = %e, "Invalid syslog address");
+                        continue;
+                    }
+                };
+
+                let transport = match output.transport.as_deref().map(|t| t.trim().to_lowercase()) {
+                    Some(t) if t == "tcp" => SyslogTransport::Tcp,
+                    Some(t) if t == "tcp_tls" => SyslogTransport::TcpTls { ca_cert: None },
+                    _ => SyslogTransport::Udp,
+                };
+
+                Arc::new(SyslogSender::new(addr, transport, formatter))
+            }
+            "webhook" => {
+                let Some(url) = output.url.as_deref() else {
+                    warn!(route = %output.name, "Webhook output missing url");
+                    continue;
+                };
+
+                let auth = match output.auth_type.as_deref().map(|t| t.trim().to_lowercase()) {
+                    Some(t) if t == "splunk_hec" => {
+                        WebhookAuth::SplunkHec(output.auth_token.clone().unwrap_or_default())
+                    }
+                    Some(t) if t == "bearer" => {
+                        WebhookAuth::Bearer(output.auth_token.clone().unwrap_or_default())
+                    }
+                    Some(t) if t == "basic" => WebhookAuth::Basic {
+                        username: output.auth_username.clone().unwrap_or_default(),
+                        password: output.auth_password.clone().unwrap_or_default(),
+                    },
+                    Some(t) if t == "custom" => WebhookAuth::Custom {
+                        header_name: output.header_name.clone().unwrap_or_default(),
+                        header_value: output.header_value.clone().unwrap_or_default(),
+                    },
+                    _ => WebhookAuth::None,
+                };
+
+                let inner = WebhookSender::new(url.to_string(), formatter, auth);
+
+                if output.batch_size.unwrap_or(0) > 0 {
+                    let batch_size = output.batch_size.unwrap_or(100);
+                    let batch_timeout =
+                        Duration::from_secs(output.batch_timeout_secs.unwrap_or(5));
+                    Arc::new(BatchingWebhookSender::new(
+                        output.name.clone(),
+                        inner,
+                        batch_size,
+                        batch_timeout,
+                    ))
+                } else {
+                    Arc::new(inner)
+                }
+            }
+            "file" => {
+                let Some(path) = output.path.as_ref() else {
+                    warn!(route = %output.name, "File output missing path");
+                    continue;
+                };
+
+                let rotate_bytes = output
+                    .rotate_size_mb
+                    .map(|mb| mb.saturating_mul(1024).saturating_mul(1024));
+                let rotate_keep = output.rotate_keep.unwrap_or(0);
+
+                Arc::new(
+                    FileAlertSender::new(path.clone(), formatter)
+                        .with_rotation(rotate_bytes, rotate_keep),
+                )
+            }
+            other => {
+                warn!(route = %output.name, output_type = %other, "Unknown SIEM output type");
+                continue;
+            }
+        };
+
+        let route = RouteConfig {
+            name: output.name.clone(),
+            sender,
+            min_severity: output.min_severity,
+            rule_ids: output.rule_ids.clone(),
+            enabled: output.enabled,
+        };
+
+        router.add_route(route).await;
+    }
+
+    info!("SIEM router configured with {} outputs", router.status().await.len());
+    router
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -97,11 +293,39 @@ async fn main() -> Result<()> {
 
     // Metrics registration (ignore errors for now).
     let _ = register_metrics();
-    if daemon_cfg.metrics.enabled {
+
+    let siem_router = setup_siem(&daemon_cfg).await;
+
+    // Management server (metrics + REST API).
+    if daemon_cfg.metrics.enabled || daemon_cfg.siem.enabled {
         let addr: SocketAddr = ([0, 0, 0, 0], daemon_cfg.metrics.port).into();
+        let state = crate::api::ApiState {
+            router: siem_router.clone(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        };
+
         tokio::spawn(async move {
-            if let Err(e) = crate::metrics::start_metrics_server(addr).await {
-                warn!(error = %e, "Metrics server exited");
+            let api = crate::api::api_routes();
+
+            let app = axum::Router::new()
+                .route("/health", axum::routing::get(|| async { "OK" }))
+                .route(
+                    "/metrics",
+                    axum::routing::get(|| async { crate::metrics::encode_metrics() }),
+                )
+                .nest("/api", api)
+                .with_state(state);
+
+            match tokio::net::TcpListener::bind(addr).await {
+                Ok(listener) => {
+                    tracing::info!("Management server listening on {}", addr);
+                    if let Err(e) = axum::serve(listener, app).await {
+                        warn!(error = %e, "Management server exited");
+                    }
+                }
+                Err(e) => {
+                    warn!(error = %e, "Failed to bind management server");
+                }
             }
         });
     }
@@ -142,7 +366,6 @@ async fn main() -> Result<()> {
     };
     let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
     let mut alert_rx = behavioral_runtime.alert_rx;
-    let siem_output = SiemOutput::new(daemon_cfg.siem.clone());
 
     #[cfg(feature = "behavior_monitor")]
     let mut ebpf_active = false;
@@ -238,9 +461,8 @@ async fn main() -> Result<()> {
         info!("Alert receiver started");
         while let Some(alert) = alert_rx.recv().await {
             log_alert(&alert);
-            if let Err(e) = siem_output.send_behavioral_alert(&alert) {
-                warn!(error = %e, "SIEM output failed");
-            }
+            let unified = behavioral_alert_to_unified(&alert);
+            let _ = siem_router.route(&unified).await;
         }
     });
 

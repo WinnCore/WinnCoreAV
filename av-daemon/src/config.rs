@@ -15,6 +15,8 @@ pub struct DaemonConfig {
     #[serde(default)]
     pub behavioral: BehavioralFileConfig,
     #[serde(default)]
+    pub threat_intel: ThreatIntelConfig,
+    #[serde(default)]
     pub siem: SiemConfig,
 }
 
@@ -131,6 +133,33 @@ impl Default for BehavioralFileConfig {
         Self {
             external_rules_dir: Some(PathBuf::from("/etc/winncore/rules")),
             alert_log_path: PathBuf::from("/var/log/winncore/alerts.json"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThreatIntelConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_threatintel_db_path")]
+    pub db_path: PathBuf,
+    #[serde(default)]
+    pub min_confidence: u8,
+    #[serde(default = "default_true")]
+    pub subdomain_matching: bool,
+}
+
+fn default_threatintel_db_path() -> PathBuf {
+    PathBuf::from("/var/lib/winncore/threatintel")
+}
+
+impl Default for ThreatIntelConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            db_path: default_threatintel_db_path(),
+            min_confidence: 0,
+            subdomain_matching: true,
         }
     }
 }

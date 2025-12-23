@@ -370,10 +370,15 @@ async fn main() -> Result<()> {
         .ok()
         .map(PathBuf::from)
         .or_else(|| daemon_cfg.behavioral.external_rules_dir.clone());
+    let mut threat_intel_cfg = daemon_cfg.threat_intel.clone();
+    if let Ok(path) = std::env::var("WINNCORE_THREATINTEL_DB") {
+        threat_intel_cfg.db_path = PathBuf::from(path);
+    }
     let behavioral_cfg = BehavioralConfig {
         response: daemon_cfg.response.clone(),
         external_rules_dir,
         alert_log_path,
+        threat_intel: threat_intel_cfg,
     };
     let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
     let mut alert_rx = behavioral_runtime.alert_rx;

@@ -14,14 +14,18 @@ use av_ebpf_common::{
     FileAccessEvent, FileAccessType, KernelModuleEvent, NetworkConnectEvent, ProcessExecEvent,
     PtraceEvent,
 };
+use av_threatintel::{ConnectionContext, IocDatabase, IocMatch, LookupEngine, MatchContext, ThreatLevel};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs;
+use tokio::io::AsyncReadExt;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
+use sha2::{Digest, Sha256};
 
 const DEFAULT_ALERT_LOG: &str = "/var/log/winncore/alerts.json";
 
@@ -72,6 +76,7 @@ pub struct BehavioralConfig {
     pub response: crate::config::ResponseConfig,
     pub external_rules_dir: Option<PathBuf>,
     pub alert_log_path: PathBuf,
+    pub threat_intel: crate::config::ThreatIntelConfig,
 }
 
 impl Default for BehavioralConfig {
@@ -80,6 +85,7 @@ impl Default for BehavioralConfig {
             response: crate::config::ResponseConfig::default(),
             external_rules_dir: Some(PathBuf::from("/etc/winncore/rules")),
             alert_log_path: PathBuf::from(DEFAULT_ALERT_LOG),
+            threat_intel: crate::config::ThreatIntelConfig::default(),
         }
     }
 }
@@ -91,6 +97,7 @@ pub struct BehavioralPipeline {
     config: BehavioralConfig,
     allowlist: Allowlist,
     system_ld_so_preload_alerted: bool,
+    intel_engine: Option<Arc<LookupEngine>>,
 }
 
 struct SyntheticAlertTemplate<'a> {
@@ -132,6 +139,31 @@ impl BehavioralPipeline {
         let rules = load_rules(&config).await?;
         engine.load_rules(rules);
 
+        let intel_engine = if config.threat_intel.enabled {
+            match IocDatabase::open(&config.threat_intel.db_path) {
+                Ok(db) => {
+                    info!(
+                        path = %config.threat_intel.db_path.display(),
+                        "Threat intel database opened"
+                    );
+                    let engine = LookupEngine::new(Arc::new(db))
+                        .with_subdomain_matching(config.threat_intel.subdomain_matching)
+                        .with_min_confidence(config.threat_intel.min_confidence);
+                    Some(Arc::new(engine))
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        path = %config.threat_intel.db_path.display(),
+                        "Threat intel database failed to open"
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Ok(BehavioralPipeline {
             engine,
             heuristics: HeuristicAnalyzer::new(),
@@ -139,6 +171,7 @@ impl BehavioralPipeline {
             config,
             allowlist: Allowlist::new(),
             system_ld_so_preload_alerted: false,
+            intel_engine,
         })
     }
 
@@ -210,6 +243,53 @@ impl BehavioralPipeline {
             &cmdline,
         ) {
             return;
+        }
+
+        if let Some(intel_engine) = &self.intel_engine {
+            if let Some(exe_path) = exe_opt {
+                if let Ok(hash) = hash_file_sha256(exe_path).await {
+                    let context = MatchContext {
+                        pid: Some(event.pid),
+                        process_name: Some(event.comm_str().to_string()),
+                        file_path: Some(exe_path.display().to_string()),
+                        source: "process_exec".to_string(),
+                        ..Default::default()
+                    };
+                    if let Some(ioc_match) = intel_engine.lookup_hash(&hash, context) {
+                        let severity = threat_level_to_severity(ioc_match.ioc.threat_level);
+                        let description = ioc_match.ioc.description.clone().unwrap_or_else(|| {
+                            format!("Known malicious file hash match: {}", hash)
+                        });
+                        let technique = ioc_match
+                            .ioc
+                            .mitre_techniques
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| "unknown".to_string());
+                        let mut matched = intel_match_fields(&ioc_match);
+                        matched.push(format!("sha256={}", hash));
+                        matched.push(format!("path={}", exe_path.display()));
+
+                        let alert = BehavioralAlert {
+                            rule_id: format!("INTEL-HASH-{}", ioc_match.ioc.source),
+                            name: "Threat Intel Hash Match".to_string(),
+                            severity: severity.to_string(),
+                            technique,
+                            tactic: "Threat Intel".to_string(),
+                            pid: event.pid,
+                            ppid: event.ppid,
+                            cmdline: cmdline.clone(),
+                            description,
+                            timestamp: Utc::now(),
+                            matched,
+                            source: "threat_intel".to_string(),
+                        };
+
+                        self.emit_threat_intel_alert(alert, severity, alert_tx)
+                            .await;
+                    }
+                }
+            }
         }
 
         let heur = self.heuristics.analyze(event.ppid, &cmdline);
@@ -636,32 +716,82 @@ impl BehavioralPipeline {
         };
 
         let comm = comm_from_bytes(&event.comm);
-        let Some(hit) =
-            det_c2::detect_suspicious_connection(event.pid, dst_ip, event.dest_port, &comm)
-        else {
-            return;
-        };
-
-        let det_c2::C2Alert {
-            alert_type, rule, ..
-        } = hit;
-
         let (ppid, cmdline) = read_proc_ppid_cmdline(event.pid).await;
-        self.emit_detection_rule_alert(
-            rule,
-            DetectionAlertData {
-                pid: event.pid,
-                ppid,
-                cmdline,
-                matched: vec![
-                    format!("dst={}:{}", dst_ip, event.dest_port),
-                    format!("type={:?}", alert_type),
-                ],
-                source: "ebpf",
-            },
-            alert_tx,
-        )
-        .await;
+
+        if let Some(intel_engine) = &self.intel_engine {
+            let protocol = protocol_to_string(event.protocol);
+            let context = MatchContext {
+                pid: Some(event.pid),
+                process_name: Some(comm.clone()),
+                connection: Some(ConnectionContext {
+                    src_ip: None,
+                    src_port: Some(event.src_port),
+                    dst_ip: Some(dst_ip.to_string()),
+                    dst_port: Some(event.dest_port),
+                    protocol: Some(protocol.clone()),
+                }),
+                source: "network_monitor".to_string(),
+                ..Default::default()
+            };
+
+            if let Some(ioc_match) = intel_engine.lookup_ip(&dst_ip.to_string(), context) {
+                let severity = threat_level_to_severity(ioc_match.ioc.threat_level);
+                let description = ioc_match.ioc.description.clone().unwrap_or_else(|| {
+                    format!("Connection to known malicious IP: {}", dst_ip)
+                });
+                let technique = ioc_match
+                    .ioc
+                    .mitre_techniques
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string());
+                let mut matched = intel_match_fields(&ioc_match);
+                matched.push(format!("dst={}:{}", dst_ip, event.dest_port));
+                matched.push(format!("proto={}", protocol));
+
+                let alert = BehavioralAlert {
+                    rule_id: format!("INTEL-IP-{}", ioc_match.ioc.source),
+                    name: "Threat Intel Network Match".to_string(),
+                    severity: severity.to_string(),
+                    technique,
+                    tactic: "Threat Intel".to_string(),
+                    pid: event.pid,
+                    ppid,
+                    cmdline: cmdline.clone(),
+                    description,
+                    timestamp: Utc::now(),
+                    matched,
+                    source: "threat_intel".to_string(),
+                };
+
+                self.emit_threat_intel_alert(alert, severity, alert_tx)
+                    .await;
+            }
+        }
+
+        if let Some(hit) =
+            det_c2::detect_suspicious_connection(event.pid, dst_ip, event.dest_port, &comm)
+        {
+            let det_c2::C2Alert {
+                alert_type, rule, ..
+            } = hit;
+
+            self.emit_detection_rule_alert(
+                rule,
+                DetectionAlertData {
+                    pid: event.pid,
+                    ppid,
+                    cmdline,
+                    matched: vec![
+                        format!("dst={}:{}", dst_ip, event.dest_port),
+                        format!("type={:?}", alert_type),
+                    ],
+                    source: "ebpf",
+                },
+                alert_tx,
+            )
+            .await;
+        }
     }
 
     async fn handle_file_access(
@@ -796,6 +926,73 @@ impl BehavioralPipeline {
 
         self.response.respond(template.severity, data.pid, None);
     }
+
+    async fn emit_threat_intel_alert(
+        &self,
+        alert: BehavioralAlert,
+        severity: &str,
+        alert_tx: &mpsc::Sender<BehavioralAlert>,
+    ) {
+        if let Err(e) = alert_tx.send(alert.clone()).await {
+            warn!(error = %e, "Failed to enqueue threat intel alert");
+        }
+
+        if let Err(e) = persist_alert_line(&self.config.alert_log_path, &alert).await {
+            error!(error = %e, "Failed to persist threat intel alert");
+        }
+
+        self.response.respond(severity, alert.pid, None);
+    }
+}
+
+fn threat_level_to_severity(level: ThreatLevel) -> &'static str {
+    match level {
+        ThreatLevel::Unknown | ThreatLevel::Info => "info",
+        ThreatLevel::Low => "low",
+        ThreatLevel::Medium => "medium",
+        ThreatLevel::High => "high",
+        ThreatLevel::Critical => "critical",
+    }
+}
+
+fn intel_match_fields(ioc_match: &IocMatch) -> Vec<String> {
+    let mut fields = vec![
+        format!("match_type={:?}", ioc_match.match_type),
+        format!("ioc_type={:?}", ioc_match.ioc.ioc_type),
+        format!("source={}", ioc_match.ioc.source),
+        format!("confidence={:?}", ioc_match.ioc.confidence),
+    ];
+
+    if let Some(source_id) = &ioc_match.ioc.source_id {
+        fields.push(format!("source_id={}", source_id));
+    }
+
+    fields
+}
+
+fn protocol_to_string(proto: u16) -> String {
+    match proto {
+        6 => "tcp".to_string(),
+        17 => "udp".to_string(),
+        1 => "icmp".to_string(),
+        _ => format!("proto_{}", proto),
+    }
+}
+
+async fn hash_file_sha256(path: &Path) -> std::io::Result<String> {
+    let mut file = fs::File::open(path).await?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let read = file.read(&mut buffer).await?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+
+    Ok(hex::encode(hasher.finalize()))
 }
 
 fn obfuscation_metadata(

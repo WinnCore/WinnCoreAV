@@ -103,7 +103,9 @@ impl LookupEngine {
             }
         }
 
-        // TODO: CIDR matching for network ranges
+        if self.cidr_matching {
+            // TODO: CIDR matching for network ranges
+        }
 
         None
     }

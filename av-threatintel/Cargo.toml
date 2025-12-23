@@ -22,7 +22,7 @@ bloomfilter = "1"
 radix_trie = "0.2"
 dashmap = "5"
 lru = "0.12"
-rocksdb = { version = "0.21", default-features = false, features = ["lz4"] }
+rocksdb = { version = "0.24", default-features = false, features = ["lz4"] }
 chrono = { workspace = true, features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = { workspace = true }

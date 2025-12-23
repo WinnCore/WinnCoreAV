@@ -5,6 +5,7 @@
 
 pub mod ioc;
 pub mod storage;
+pub mod feeds;
 
 pub use ioc::{
     Confidence, ConnectionContext, Ioc, IocMatch, IocType, MatchContext, MatchType, ThreatLevel,

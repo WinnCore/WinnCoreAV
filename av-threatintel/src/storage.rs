@@ -324,6 +324,29 @@ impl IocDatabase {
         None
     }
 
+    /// Fast lookup for domain IOCs (exact match only)
+    pub fn lookup_domain_exact(&self, domain: &str) -> Option<Arc<Ioc>> {
+        let domain_lower = domain.to_lowercase();
+        let domain_clean = domain_lower.strip_suffix('.').unwrap_or(&domain_lower);
+
+        if !self
+            .bloom_domains
+            .read()
+            .unwrap()
+            .check(&domain_clean.to_string())
+        {
+            return None;
+        }
+
+        if let Some(ioc) = self.cache_domains.get(domain_clean) {
+            self.stats.write().unwrap().cache_hits += 1;
+            return Some(ioc.clone());
+        }
+
+        self.stats.write().unwrap().cache_misses += 1;
+        self.lookup_from_db(IocType::Domain, domain_clean)
+    }
+
     /// Generic lookup from database
     fn lookup_from_db(&self, ioc_type: IocType, value: &str) -> Option<Arc<Ioc>> {
         let key = Self::storage_key(ioc_type, value);

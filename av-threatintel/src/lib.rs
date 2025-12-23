@@ -6,8 +6,10 @@
 pub mod ioc;
 pub mod storage;
 pub mod feeds;
+pub mod lookup;
 
 pub use ioc::{
     Confidence, ConnectionContext, Ioc, IocMatch, IocType, MatchContext, MatchType, ThreatLevel,
 };
 pub use storage::IocDatabase;
+pub use lookup::{AsyncLookupEngine, LookupEngine};

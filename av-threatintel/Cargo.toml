@@ -13,11 +13,32 @@ keywords = ["security", "edr", "arm64", "antivirus", "threatintel"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tracing = "0.1"
-thiserror = "1.0"
-tokio = { version = "1", features = ["fs"] }
-sha2 = "0.10"
-hex = "0.4"
+tokio = { workspace = true, features = ["full"] }
+async-trait = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+stix = "0.5"
+bloomfilter = "1"
+radix_trie = "0.2"
+dashmap = "5"
+lru = "0.12"
+rocksdb = { version = "0.21", default-features = false, features = ["lz4"] }
+chrono = { workspace = true, features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true, features = ["serde"] }
 ipnetwork = "0.20"
+hex = { workspace = true }
+sha2 = { workspace = true }
+md-5 = "0.10"
+sha1 = "0.10"
+governor = "0.6"
+csv = "1"
+zeroize = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+wiremock = "0.5"

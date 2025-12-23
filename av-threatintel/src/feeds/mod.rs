@@ -3,6 +3,9 @@
 pub mod taxii;
 pub mod misp;
 pub mod virustotal;
+pub mod manager;
+
+pub use manager::{FeedConfig, FeedManager, FeedType};
 
 use zeroize::Zeroizing;
 

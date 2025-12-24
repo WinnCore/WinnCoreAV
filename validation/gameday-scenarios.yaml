@@ -1,0 +1,25 @@
+scenarios:
+  - name: "EDR Agent Crash During Active Attack"
+    trigger: "Kill EDR process while ransomware simulation runs"
+    expected:
+      - Watchdog restarts EDR within 30 seconds
+      - No events lost from queue
+      - Attack detection continues after restart
+    metrics:
+      - recovery_time_seconds
+      - events_lost_count
+      - detection_gap_seconds
+
+  - name: "Network Isolation During C2 Detection"
+    trigger: "Network partition while EDR detects beacon"
+    expected:
+      - Local blocking continues
+      - Events queued for upload
+      - Reconnection triggers sync
+
+  - name: "Kernel Module Forcible Unload"
+    trigger: "rmmod winncore_monitor"
+    expected:
+      - Detection of module removal within 1s
+      - Automatic reload attempt with backoff
+      - Fallback to userspace monitoring

@@ -1,0 +1,40 @@
+name: Self-Healing CI
+
+on:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  autofix:
+    runs-on: ubuntu-24.04-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Auto-fix formatting
+        run: cargo fmt --all
+
+      - name: Auto-fix lints
+        run: cargo clippy --fix --workspace --allow-dirty --all-targets -- -D warnings
+
+      - uses: autofix-ci/action@v1
+
+  full-validation:
+    needs: autofix
+    runs-on: ubuntu-24.04-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Run Autonomous Validation (fast)
+        run: WINNCORE_VALIDATION_MODE=fast ./scripts/autonomous-validation.sh

@@ -1,0 +1,32 @@
+name: Continuous Detection Validation
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  detection-regression:
+    runs-on: ubuntu-24.04-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Build Agent
+        run: cargo build --release -p av-daemon -p av-attack-sim -p av-cli
+
+      - name: Run Detection Suite
+        run: ./scripts/run-detection-suite.sh --output results.json
+
+      - name: Check NFR Threshold
+        run: |
+          python3 scripts/check_regression.py \
+            --current results.json \
+            --baseline baselines/detection.json \
+            --max-nfr 0.01 \
+            --allow-missing-baseline

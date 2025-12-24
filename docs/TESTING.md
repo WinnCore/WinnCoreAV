@@ -1,5 +1,10 @@
 # WinnCoreAV Testing Methodology
 
+## Autonomous Validation System
+
+For the full always-on validation pipeline (NFR checks, fuzzing, mutation tests,
+performance regression, and compliance evidence), see `docs/VALIDATION_SYSTEM.md`.
+
 ## Test Suite Overview
 
 MITRE ATT&CK-aligned atomic behavior tests validating detection rules

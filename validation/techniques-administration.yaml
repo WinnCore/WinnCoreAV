@@ -1,0 +1,17 @@
+version: 1.2
+techniques:
+  - technique_id: T1055.008
+    technique_name: "Ptrace System Calls"
+    detection:
+      applicable_to: [Linux servers]
+      location: ["WinnCoreAV Rule WINN-001"]
+      score_logbook:
+        - date: 2025-01-15
+          score: 4
+          comment: "Detects ptrace-based injection via eBPF"
+    visibility:
+      applicable_to: [Linux servers]
+      score_logbook:
+        - date: 2025-01-15
+          score: 4
+          comment: "Full syscall visibility via eBPF"

@@ -1,0 +1,7 @@
+{
+  "timestamp": null,
+  "attack_sim": {
+    "results": []
+  },
+  "note": "Run scripts/update_detection_baseline.sh to populate"
+}

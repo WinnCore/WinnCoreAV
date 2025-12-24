@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 use crate::siem::SiemConfig;
+use av_threatintel::FeedConfig;
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct DaemonConfig {
@@ -147,6 +148,8 @@ pub struct ThreatIntelConfig {
     pub min_confidence: u8,
     #[serde(default = "default_true")]
     pub subdomain_matching: bool,
+    #[serde(default)]
+    pub feeds: Vec<FeedConfig>,
 }
 
 fn default_threatintel_db_path() -> PathBuf {
@@ -160,6 +163,7 @@ impl Default for ThreatIntelConfig {
             db_path: default_threatintel_db_path(),
             min_confidence: 0,
             subdomain_matching: true,
+            feeds: Vec::new(),
         }
     }
 }

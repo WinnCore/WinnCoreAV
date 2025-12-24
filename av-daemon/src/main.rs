@@ -47,6 +47,7 @@ mod watchdog;
 use behavioral_pipeline::{
     log_alert, start_behavioral_pipeline, BehavioralAlert, BehavioralConfig,
 };
+use av_threatintel::{FeedManager, IocDatabase};
 use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use error::Subsystem;
 use hardening::{init_all_hardening, start_background_hardening, HardeningConfig};
@@ -374,11 +375,44 @@ async fn main() -> Result<()> {
     if let Ok(path) = std::env::var("WINNCORE_THREATINTEL_DB") {
         threat_intel_cfg.db_path = PathBuf::from(path);
     }
+    let intel_db = if threat_intel_cfg.enabled {
+        match IocDatabase::open(&threat_intel_cfg.db_path) {
+            Ok(db) => Some(Arc::new(db)),
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    path = %threat_intel_cfg.db_path.display(),
+                    "Threat intel database failed to open"
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    if let Some(db) = intel_db.clone() {
+        let feeds = threat_intel_cfg
+            .feeds
+            .iter()
+            .filter(|feed| feed.enabled)
+            .cloned()
+            .collect::<Vec<_>>();
+        if !feeds.is_empty() {
+            info!(count = feeds.len(), "Starting threat intel feed manager");
+            let manager = Arc::new(FeedManager::new(db, feeds));
+            tokio::spawn(async move {
+                manager.start_background_updates().await;
+            });
+        }
+    }
+
     let behavioral_cfg = BehavioralConfig {
         response: daemon_cfg.response.clone(),
         external_rules_dir,
         alert_log_path,
         threat_intel: threat_intel_cfg,
+        threat_intel_db: intel_db,
     };
     let behavioral_runtime = start_behavioral_pipeline(behavioral_cfg).await?;
     let mut alert_rx = behavioral_runtime.alert_rx;

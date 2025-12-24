@@ -15,6 +15,37 @@ quarantine_dir = "/var/lib/winncore/quarantine"
 external_rules_dir = "/etc/winncore/rules"
 alert_log_path = "/var/log/winncore/behavioral_alerts.jsonl"
 
+# Threat intelligence configuration
+[threat_intel]
+enabled = false
+db_path = "/var/lib/winncore/threatintel"
+min_confidence = 0
+subdomain_matching = true
+
+# Example TAXII feed (API key in env var)
+[[threat_intel.feeds]]
+name = "taxii-demo"
+feed_type = "taxii"
+enabled = false
+update_interval_mins = 60
+config = { server_url = "https://taxii.example.com", api_root = "api", collection_id = "collection-id", api_key_env = "WINNCORE_TAXII_API_KEY", timeout_secs = 30, page_size = 100 }
+
+# Example MISP feed
+[[threat_intel.feeds]]
+name = "misp-demo"
+feed_type = "misp"
+enabled = false
+update_interval_mins = 60
+config = { url = "https://misp.example.com", api_key_env = "WINNCORE_MISP_API_KEY", verify_ssl = true, timeout_secs = 30, last_days = 7 }
+
+# Example VirusTotal on-demand enrichment
+[[threat_intel.feeds]]
+name = "virustotal-demo"
+feed_type = "virus_total"
+enabled = false
+update_interval_mins = 120
+config = { api_key_env = "WINNCORE_VT_API_KEY", rate_limit = 4, timeout_secs = 30, hashes = [], domains = [], ips = [] }
+
 # SIEM Integration Configuration
 [siem]
 enabled = true

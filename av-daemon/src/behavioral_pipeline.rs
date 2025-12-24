@@ -77,6 +77,7 @@ pub struct BehavioralConfig {
     pub external_rules_dir: Option<PathBuf>,
     pub alert_log_path: PathBuf,
     pub threat_intel: crate::config::ThreatIntelConfig,
+    pub threat_intel_db: Option<Arc<IocDatabase>>,
 }
 
 impl Default for BehavioralConfig {
@@ -86,6 +87,7 @@ impl Default for BehavioralConfig {
             external_rules_dir: Some(PathBuf::from("/etc/winncore/rules")),
             alert_log_path: PathBuf::from(DEFAULT_ALERT_LOG),
             threat_intel: crate::config::ThreatIntelConfig::default(),
+            threat_intel_db: None,
         }
     }
 }
@@ -140,26 +142,34 @@ impl BehavioralPipeline {
         engine.load_rules(rules);
 
         let intel_engine = if config.threat_intel.enabled {
-            match IocDatabase::open(&config.threat_intel.db_path) {
-                Ok(db) => {
-                    info!(
-                        path = %config.threat_intel.db_path.display(),
-                        "Threat intel database opened"
-                    );
-                    let engine = LookupEngine::new(Arc::new(db))
-                        .with_subdomain_matching(config.threat_intel.subdomain_matching)
-                        .with_min_confidence(config.threat_intel.min_confidence);
-                    Some(Arc::new(engine))
+            let db = if let Some(db) = config.threat_intel_db.clone() {
+                Some(db)
+            } else {
+                match IocDatabase::open(&config.threat_intel.db_path) {
+                    Ok(db) => {
+                        info!(
+                            path = %config.threat_intel.db_path.display(),
+                            "Threat intel database opened"
+                        );
+                        Some(Arc::new(db))
+                    }
+                    Err(e) => {
+                        warn!(
+                            error = %e,
+                            path = %config.threat_intel.db_path.display(),
+                            "Threat intel database failed to open"
+                        );
+                        None
+                    }
                 }
-                Err(e) => {
-                    warn!(
-                        error = %e,
-                        path = %config.threat_intel.db_path.display(),
-                        "Threat intel database failed to open"
-                    );
-                    None
-                }
-            }
+            };
+
+            db.map(|db| {
+                let engine = LookupEngine::new(db)
+                    .with_subdomain_matching(config.threat_intel.subdomain_matching)
+                    .with_min_confidence(config.threat_intel.min_confidence);
+                Arc::new(engine)
+            })
         } else {
             None
         };

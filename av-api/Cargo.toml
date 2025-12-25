@@ -1,0 +1,27 @@
+[package]
+name = "av-api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "av-api-server"
+path = "src/bin/server.rs"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros", "ws"] }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+uuid = { version = "1.10", features = ["serde", "v4"] }
+jsonwebtoken = "9.3"
+argon2 = "0.5"
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }

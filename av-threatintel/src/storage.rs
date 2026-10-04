@@ -8,7 +8,7 @@
 use crate::ioc::{Ioc, IocType};
 use bloomfilter::Bloom;
 use dashmap::DashMap;
-use rocksdb::{DB, IteratorMode, Options, WriteBatch};
+use rocksdb::{IteratorMode, Options, WriteBatch, DB};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use thiserror::Error;
@@ -121,10 +121,7 @@ impl IocDatabase {
                     .unwrap()
                     .set(&lookup_key.to_string());
             } else if let Some(lookup_key) = key_str.strip_prefix("ip:") {
-                self.bloom_ips
-                    .write()
-                    .unwrap()
-                    .set(&lookup_key.to_string());
+                self.bloom_ips.write().unwrap().set(&lookup_key.to_string());
             } else if let Some(lookup_key) = key_str.strip_prefix("domain:") {
                 self.bloom_domains
                     .write()
@@ -377,7 +374,8 @@ impl IocDatabase {
                             self.cache_ips.insert(value.to_string(), arc_ioc.clone());
                         }
                         IocType::Domain => {
-                            self.cache_domains.insert(value.to_string(), arc_ioc.clone());
+                            self.cache_domains
+                                .insert(value.to_string(), arc_ioc.clone());
                         }
                         _ => {}
                     }

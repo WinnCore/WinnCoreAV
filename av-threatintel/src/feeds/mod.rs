@@ -1,9 +1,9 @@
 //! Feed clients for threat intelligence ingestion.
 
-pub mod taxii;
-pub mod misp;
-pub mod virustotal;
 pub mod manager;
+pub mod misp;
+pub mod taxii;
+pub mod virustotal;
 
 pub use manager::{FeedConfig, FeedManager, FeedType};
 

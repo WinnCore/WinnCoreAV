@@ -44,10 +44,10 @@ mod shutdown;
 mod siem;
 mod watchdog;
 
+use av_threatintel::{FeedManager, IocDatabase};
 use behavioral_pipeline::{
     log_alert, start_behavioral_pipeline, BehavioralAlert, BehavioralConfig,
 };
-use av_threatintel::{FeedManager, IocDatabase};
 use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use error::Subsystem;
 use hardening::{init_all_hardening, start_background_hardening, HardeningConfig};

@@ -223,10 +223,7 @@ impl MispClient {
                 ioc.tags.insert(tag.name.clone());
 
                 // Extract MITRE technique IDs from tags
-                if tag
-                    .name
-                    .starts_with("misp-galaxy:mitre-attack-pattern")
-                {
+                if tag.name.starts_with("misp-galaxy:mitre-attack-pattern") {
                     if let Some(technique) = self.extract_mitre_from_tag(&tag.name) {
                         ioc.mitre_techniques.push(technique);
                     }
@@ -309,9 +306,15 @@ mod tests {
         };
         let client = MispClient::new(config).unwrap();
 
-        assert_eq!(client.misp_type_to_ioc_type("sha256"), Some(IocType::Sha256));
+        assert_eq!(
+            client.misp_type_to_ioc_type("sha256"),
+            Some(IocType::Sha256)
+        );
         assert_eq!(client.misp_type_to_ioc_type("ip-dst"), Some(IocType::Ipv4));
-        assert_eq!(client.misp_type_to_ioc_type("domain"), Some(IocType::Domain));
+        assert_eq!(
+            client.misp_type_to_ioc_type("domain"),
+            Some(IocType::Domain)
+        );
         assert_eq!(client.misp_type_to_ioc_type("url"), Some(IocType::Url));
     }
 

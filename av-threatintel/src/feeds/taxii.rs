@@ -210,10 +210,7 @@ impl TaxiiClient {
             };
         }
 
-        info!(
-            "Retrieved {} STIX objects from TAXII",
-            all_objects.len()
-        );
+        info!("Retrieved {} STIX objects from TAXII", all_objects.len());
         Ok(all_objects)
     }
 

@@ -1,9 +1,9 @@
 //! Feed manager for automated IOC updates
 
 use crate::feeds::misp::{MispClient, MispConfig};
+use crate::feeds::read_env_secret;
 use crate::feeds::taxii::{TaxiiClient, TaxiiConfig};
 use crate::feeds::virustotal::{VtClient, VtConfig, VtError};
-use crate::feeds::read_env_secret;
 use crate::ioc::{Confidence, Ioc, IocType, ThreatLevel};
 use crate::storage::IocDatabase;
 use serde::{Deserialize, Serialize};
@@ -267,9 +267,7 @@ impl FeedManager {
                 .or_else(|| IocType::from_value(value));
             let Some(ioc_type) = ioc_type else { continue };
 
-            let source = source_override
-                .clone()
-                .unwrap_or_else(|| feed.name.clone());
+            let source = source_override.clone().unwrap_or_else(|| feed.name.clone());
             let mut ioc = Ioc::new(ioc_type, value, source);
 
             if let Some(confidence) =
@@ -306,19 +304,23 @@ impl FeedManager {
         let json: serde_json::Value = serde_json::from_str(&body)?;
 
         let mut iocs = Vec::new();
-        let Some(items) = json.as_array() else { return Ok(iocs) };
+        let Some(items) = json.as_array() else {
+            return Ok(iocs);
+        };
 
         for item in items {
             if let Some(value) = item.as_str() {
-                let Some(ioc_type) = IocType::from_value(value) else { continue };
-                let source = source_override
-                    .clone()
-                    .unwrap_or_else(|| feed.name.clone());
+                let Some(ioc_type) = IocType::from_value(value) else {
+                    continue;
+                };
+                let source = source_override.clone().unwrap_or_else(|| feed.name.clone());
                 iocs.push(Ioc::new(ioc_type, value, source));
                 continue;
             }
 
-            let Some(obj) = item.as_object() else { continue };
+            let Some(obj) = item.as_object() else {
+                continue;
+            };
             let value = obj
                 .get("value")
                 .or_else(|| obj.get("indicator"))
@@ -333,9 +335,7 @@ impl FeedManager {
                 .or_else(|| IocType::from_value(value));
             let Some(ioc_type) = ioc_type else { continue };
 
-            let source = source_override
-                .clone()
-                .unwrap_or_else(|| feed.name.clone());
+            let source = source_override.clone().unwrap_or_else(|| feed.name.clone());
             let mut ioc = Ioc::new(ioc_type, value, source);
 
             if let Some(confidence) = obj.get("confidence").and_then(|v| v.as_u64()) {
@@ -366,7 +366,10 @@ fn required_str(
 }
 
 fn optional_str(config: &serde_json::Value, key: &str) -> Option<String> {
-    config.get(key).and_then(|v| v.as_str()).map(|v| v.to_string())
+    config
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(|v| v.to_string())
 }
 
 fn optional_u64(config: &serde_json::Value, key: &str) -> Option<u64> {

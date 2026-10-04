@@ -14,9 +14,12 @@ use av_ebpf_common::{
     FileAccessEvent, FileAccessType, KernelModuleEvent, NetworkConnectEvent, ProcessExecEvent,
     PtraceEvent,
 };
-use av_threatintel::{ConnectionContext, IocDatabase, IocMatch, LookupEngine, MatchContext, ThreatLevel};
+use av_threatintel::{
+    ConnectionContext, IocDatabase, IocMatch, LookupEngine, MatchContext, ThreatLevel,
+};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
@@ -25,7 +28,6 @@ use tokio::fs;
 use tokio::io::AsyncReadExt;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-use sha2::{Digest, Sha256};
 
 const DEFAULT_ALERT_LOG: &str = "/var/log/winncore/alerts.json";
 
@@ -746,9 +748,11 @@ impl BehavioralPipeline {
 
             if let Some(ioc_match) = intel_engine.lookup_ip(&dst_ip.to_string(), context) {
                 let severity = threat_level_to_severity(ioc_match.ioc.threat_level);
-                let description = ioc_match.ioc.description.clone().unwrap_or_else(|| {
-                    format!("Connection to known malicious IP: {}", dst_ip)
-                });
+                let description = ioc_match
+                    .ioc
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| format!("Connection to known malicious IP: {}", dst_ip));
                 let technique = ioc_match
                     .ioc
                     .mitre_techniques

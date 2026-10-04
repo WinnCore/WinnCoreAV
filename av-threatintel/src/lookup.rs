@@ -57,8 +57,7 @@ impl LookupEngine {
             _ => return None,
         };
 
-        if hash_clean.len() != expected_len || !hash_clean.chars().all(|c| c.is_ascii_hexdigit())
-        {
+        if hash_clean.len() != expected_len || !hash_clean.chars().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
 
@@ -175,9 +174,7 @@ impl LookupEngine {
         // Try to detect type
         if let Some(ioc_type) = IocType::from_value(value) {
             match ioc_type {
-                IocType::Sha256 | IocType::Sha1 | IocType::Md5 => {
-                    self.lookup_hash(value, context)
-                }
+                IocType::Sha256 | IocType::Sha1 | IocType::Md5 => self.lookup_hash(value, context),
                 IocType::Ipv4 | IocType::Ipv6 => self.lookup_ip(value, context),
                 IocType::Domain => self.lookup_domain(value, context),
                 IocType::Url => self.lookup_url(value, context),

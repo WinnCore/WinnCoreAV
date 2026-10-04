@@ -45,6 +45,16 @@ pub struct IocDatabase {
     stats: RwLock<DbStats>,
 }
 
+// Manual impl so types holding the database (e.g. av-daemon's BehavioralConfig)
+// can derive Debug. Deriving here would dump the bloom filters and every cached IOC.
+impl std::fmt::Debug for IocDatabase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IocDatabase")
+            .field("path", &self.db.path())
+            .finish_non_exhaustive()
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct DbStats {
     pub total_iocs: u64,

@@ -6,7 +6,10 @@
 //! MTE. On unsupported platforms these APIs are safe no-ops.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::{debug, info, warn};
+use tracing::warn;
+// debug!/info! are only used in the aarch64 Linux paths.
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+use tracing::{debug, info};
 
 static MTE_ENABLED: AtomicBool = AtomicBool::new(false);
 

@@ -75,7 +75,7 @@ impl ShutdownCoordinator {
             priority,
         });
 
-        handlers.sort_by(|a, b| b.priority.cmp(&a.priority));
+        handlers.sort_by_key(|h| std::cmp::Reverse(h.priority));
     }
 
     /// Initiate graceful shutdown

@@ -27,7 +27,10 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::{debug, instrument, warn};
+// debug! is only used in the aarch64 register-read path.
+#[cfg(target_arch = "aarch64")]
+use tracing::debug;
+use tracing::{instrument, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Arm64SecurityCapabilities {
@@ -184,7 +187,7 @@ fn detect_arm64_capabilities() -> Result<Arm64SecurityCapabilities, Arm64Securit
         let mut caps = cpuinfo_only_capabilities()?;
         caps.notes
             .push("Not running on aarch64 target; inline register reads skipped".to_string());
-        return Ok(caps);
+        Ok(caps)
     }
 }
 

@@ -70,20 +70,15 @@ impl IocType {
 }
 
 /// Confidence level in the IOC
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Confidence {
     Unknown = 0,
     Low = 25,
+    #[default]
     Medium = 50,
     High = 75,
     Confirmed = 100,
-}
-
-impl Default for Confidence {
-    fn default() -> Self {
-        Confidence::Medium
-    }
 }
 
 impl From<u8> for Confidence {
@@ -100,21 +95,16 @@ impl From<u8> for Confidence {
 }
 
 /// Threat severity level
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ThreatLevel {
     Unknown = 0,
     Info = 1,
     Low = 2,
+    #[default]
     Medium = 3,
     High = 4,
     Critical = 5,
-}
-
-impl Default for ThreatLevel {
-    fn default() -> Self {
-        ThreatLevel::Medium
-    }
 }
 
 /// Indicator of Compromise

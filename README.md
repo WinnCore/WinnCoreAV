@@ -47,7 +47,7 @@ We have NOT been evaluated by AV-TEST, VirusTotal, or any third-party lab.
 
 ## Installation
 ```bash
-# Build from source (requires Rust 1.70+)
+# Build from source (requires Rust 1.89+)
 git clone https://github.com/WinnCore/WinnCoreAV.git
 cd WinnCoreAV
 cargo build --release

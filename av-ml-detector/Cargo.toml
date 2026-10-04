@@ -21,7 +21,9 @@ serde_json = "1.0"
 tracing = "0.1"
 
 # ML inference - use ndarray version that matches ort
-ort = "2.0.0-rc.10"
+# Exact pin: "2.0.0-rc.10" also matches later RCs, and `cargo update` jumps to
+# rc.13 (new API, ndarray 0.17), which this crate isn't written against.
+ort = "=2.0.0-rc.10"
 ndarray = "0.16"
 
 # ELF parsing

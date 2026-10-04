@@ -21,7 +21,7 @@ serde_json = { workspace = true }
 bloomfilter = "1"
 radix_trie = "0.2"
 dashmap = "5"
-lru = "0.12"
+lru = "0.18"
 # bindgen-runtime: yara-sys's bindgen loads libclang at runtime, and Cargo unifies
 # that onto the shared clang-sys build. Without this feature, rocksdb's bindgen
 # never loads libclang and its build script panics.
@@ -43,4 +43,4 @@ zeroize = "1"
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3"
-wiremock = "0.5"
+wiremock = "0.6"

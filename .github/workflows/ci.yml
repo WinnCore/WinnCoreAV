@@ -8,10 +8,18 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-24.04-arm64
+    # GitHub-hosted ARM64 label is ubuntu-24.04-arm (no "64"). The old label
+    # matched no runner, so every job sat queued for 24h and got cancelled.
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      
+
+      # libclang for bindgen (yara-sys, librocksdb-sys), libssl for openssl-sys.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libclang-dev libssl-dev pkg-config
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:

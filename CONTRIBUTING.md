@@ -6,7 +6,7 @@ Thank you for your interest in contributing!
 
 By submitting a pull request, you certify:
 
-1. **Rights to Contribute:** You have the legal right to submit the code under the project's MIT license.
+1. **Rights to Contribute:** You have the legal right to submit the code under the project's Apache-2.0 license.
 
 2. **AI-Assisted Code Disclosure:** If you used AI tools (e.g., GitHub Copilot, Claude, GPT-4):
    - Disclose provider and model in PR template

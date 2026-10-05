@@ -24,7 +24,7 @@
 ## Third-Party Code
 
 - [ ] This PR includes third-party code or dependencies
-- [ ] If yes, license compatibility verified (MIT-compatible)
+- [ ] If yes, license compatibility verified (Apache-2.0-compatible)
 - [ ] If yes, attribution added to NOTICE file
 
 ## Testing

@@ -2,7 +2,7 @@
 
 ## License
 
-WinnCoreAV is licensed under the **MIT License**. See [LICENSE](LICENSE).
+WinnCoreAV is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE).
 
 ## AI-Assisted Development Disclosure
 
@@ -10,7 +10,7 @@ This project uses AI-assisted development tools. All AI-generated content is:
 
 1. **Human-reviewed and edited** before merge
 2. **Disclosed in PR metadata** (see PR template)
-3. **Subject to MIT license** (no additional restrictions)
+3. **Subject to the Apache-2.0 license** (no additional restrictions)
 
 ### AI Provider Matrix
 
@@ -73,7 +73,7 @@ Human-Edit: 60% new logic, 40% AI scaffold
 - LGPL (static linking concerns)
 - Proprietary/closed-source (without explicit approval)
 
-**Enforcement:** `cargo-deny` in CI (`policy.yml`)
+**Enforcement:** the cargo-deny config is in `tools/deny.toml`. No CI workflow runs it right now (the old `policy.yml` workflow was removed in December 2025).
 
 ## Similarity and License Scanning
 
@@ -127,14 +127,14 @@ By submitting a PR, contributors warrant:
 1. They have rights to contribute the code
 2. AI-assisted code is disclosed per template
 3. No third-party confidential information included without authorization
-4. Output is compatible with MIT license
+4. Output is compatible with the Apache-2.0 license
 5. They have reviewed AI ToS for IP ownership
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for DCO/CLA details.
 
 ## Indemnification
 
-WinnCoreAV is provided AS-IS under MIT with no warranties. Contributors and users indemnify maintainers against claims arising from AI-generated content, per standard MIT terms.
+WinnCoreAV is provided AS-IS under the Apache License 2.0, with no warranties (see sections 7 and 8 of the license). Contributors and users indemnify maintainers against claims arising from AI-generated content.
 
 ## Changes to This Policy
 
@@ -146,5 +146,5 @@ Contact: security@winncore.com (for legal/compliance inquiries)
 
 ---
 
-**Last Updated:** 2025-10-30  
+**Last Updated:** 2026-10-04  
 **Version:** 1.0

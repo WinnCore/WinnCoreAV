@@ -12,7 +12,7 @@ jobs:
     # matched no runner, so every job sat queued for 24h and got cancelled.
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # libclang for bindgen (yara-sys, librocksdb-sys), libssl for openssl-sys.
       - name: Install build dependencies
@@ -26,7 +26,7 @@ jobs:
           components: clippy, rustfmt
       
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/

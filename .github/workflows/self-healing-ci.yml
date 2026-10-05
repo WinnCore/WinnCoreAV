@@ -1,10 +1,10 @@
 name: Self-Healing CI
 
 on:
-  push:
-    branches: [main, develop]
-  schedule:
-    - cron: '0 */6 * * *'
+  # Manual only until it's set up: autofix-ci/action requires this workflow
+  # to be named "autofix.ci" and the autofix.ci app to be installed, so on
+  # push/schedule it failed every run.
+  workflow_dispatch:
 
 jobs:
   autofix:

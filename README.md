@@ -14,7 +14,7 @@ WinnCoreAV is an experimental endpoint detection and response (EDR) agent built 
 |-----------|--------|-------|
 | Process Monitoring | ✅ Working | Polls /proc every 100ms |
 | ML Detection | ✅ Working | LightGBM/ONNX inference |
-| YARA Scanning | ✅ Working | YARA-X integration |
+| YARA Scanning | ✅ Working | libyara (vendored, via the `yara` crate) |
 | Behavioral Rules | ✅ Working | 50+ pattern rules |
 | Quarantine | ✅ Working | AES-256-GCM encrypted |
 | Response Actions | ✅ Working | Kill process, quarantine file |

@@ -48,7 +48,6 @@ notify = "6.1"
 inotify = { version = "0.10", default-features = false }
 signal-hook = "0.3"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-daemonize = "0.5"
 nix = { version = "0.27", features = ["signal"] }
 config = "0.14"
 tokio-stream = "0.1"

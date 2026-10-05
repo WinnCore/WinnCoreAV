@@ -1,10 +1,10 @@
 # WinnCore AV - Hardened build configuration
-# Enables exploit mitigations and ARM64 protections where available.
+# Enables exploit mitigations where the Rust toolchain supports them.
 
 # Cargo takes rustflags from build.rustflags OR from the matching [target.*]
 # entries, never both. Under [build], these were silently dropped on aarch64,
-# which has its own [target.aarch64-*] rustflags below. Matching [target.cfg]
-# and [target.<triple>] entries are joined, so these now reach every Linux
+# which has its own [target.aarch64-*] section below. Matching [target.cfg]
+# and [target.<triple>] entries are joined, so these reach every Linux
 # target, including aarch64.
 [target.'cfg(target_os = "linux")']
 rustflags = [
@@ -14,11 +14,15 @@ rustflags = [
     "-C", "link-arg=-Wl,-z,relro",
     "-C", "link-arg=-Wl,-z,now",
     "-C", "link-arg=-Wl,-z,noexecstack",
-    "-C", "link-arg=-fstack-clash-protection",
-
-    # Fortification
-    "-C", "link-arg=-D_FORTIFY_SOURCE=2",
 ]
+# Left out on purpose. These used to be passed to rustc as link args, where
+# they did nothing for Rust code:
+# - -fstack-clash-protection: rustc already emits inline stack probes on
+#   x86_64 and aarch64 Linux by default.
+# - -D_FORTIFY_SOURCE: a C preprocessor define, so it can't apply to Rust.
+# - -mbranch-protection (PAC/BTI): needs codegen support, which for Rust is
+#   still nightly-only (-Zbranch-protection=bti,pac-ret). A linker flag
+#   can't add it.
 
 [profile.release]
 panic = "abort"
@@ -37,17 +41,11 @@ strip = "none"
 
 [target.aarch64-unknown-linux-gnu]
 linker = "aarch64-linux-gnu-gcc"
-rustflags = [
-    "-C", "link-arg=-mbranch-protection=bti",
-    "-C", "link-arg=-mbranch-protection=pac-ret",
-]
 
 [target.aarch64-unknown-linux-musl]
 linker = "aarch64-linux-musl-gcc"
 rustflags = [
     "-C", "target-feature=+crt-static",
-    "-C", "link-arg=-mbranch-protection=bti",
-    "-C", "link-arg=-mbranch-protection=pac-ret",
 ]
 
 [target.aarch64-apple-darwin]

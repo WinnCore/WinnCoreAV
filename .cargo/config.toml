@@ -1,7 +1,12 @@
 # WinnCore AV - Hardened build configuration
 # Enables exploit mitigations and ARM64 protections where available.
 
-[build]
+# Cargo takes rustflags from build.rustflags OR from the matching [target.*]
+# entries, never both. Under [build], these were silently dropped on aarch64,
+# which has its own [target.aarch64-*] rustflags below. Matching [target.cfg]
+# and [target.<triple>] entries are joined, so these now reach every Linux
+# target, including aarch64.
+[target.'cfg(target_os = "linux")']
 rustflags = [
     # Exploit mitigations
     "-C", "overflow-checks=on",
